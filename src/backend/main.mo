@@ -106,10 +106,9 @@ actor {
   };
 
   public shared ({ caller }) func createCheckoutSession(items : [Stripe.ShoppingItem], successUrl : Text, cancelUrl : Text) : async Text {
-    if (caller.isAnonymous()) {
-      Runtime.trap("Must be logged in to purchase");
-    };
-    await Stripe.createCheckoutSession(requireStripeConfigActor(), caller, items, successUrl, cancelUrl, transform);
+    // Anonymous callers are allowed — no login required to purchase
+    let effectiveCaller = if (caller.isAnonymous()) { Principal.anonymous() } else { caller };
+    await Stripe.createCheckoutSession(requireStripeConfigActor(), effectiveCaller, items, successUrl, cancelUrl, transform);
   };
 
   public func getStripeSessionStatus(sessionId : Text) : async Stripe.StripeSessionStatus {

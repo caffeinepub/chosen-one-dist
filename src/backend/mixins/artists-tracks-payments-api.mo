@@ -587,11 +587,8 @@ mixin (
     successUrl : Text,
     cancelUrl  : Text,
   ) : async { #ok : Text; #err : Text } {
-    // Token resolves to buyer; anonymous purchases not permitted
-    let _buyerToken = switch (resolveToken(token)) {
-      case null    { return #err("Must be logged in to purchase") };
-      case (?aid)  { aid };
-    };
+    // token is optional — if provided and valid, it associates the session with
+    // a customer or artist account for re-downloads. Anonymous purchases are allowed.
     let cfg = requireStripeConfig();
     let t = switch (tracks.get(trackId)) {
       case null  { return #err("Track not found") };
@@ -609,9 +606,7 @@ mixin (
       priceInCents       = t.priceInCents;
       quantity           = 1;
     };
-    // Use a synthetic principal derived from the token for Stripe (required by caffeineai-stripe)
-    let dummyCaller = Principal.anonymous();
-    let url = await Stripe.createCheckoutSession(cfg, dummyCaller, [item], successUrl, cancelUrl, transform);
+    let url = await Stripe.createCheckoutSession(cfg, Principal.anonymous(), [item], successUrl, cancelUrl, transform);
     #ok(url);
   };
 
@@ -626,9 +621,11 @@ mixin (
     stripeSessionId : Text,
     buyerEmail      : ?Text,
   ) : async { #ok; #err : Text } {
-    let buyerToken = switch (resolveToken(token)) {
-      case null    { return #err("Must be logged in to fulfill purchase") };
-      case (?aid)  { aid };
+    // token is optional — used only to associate the sale with a known buyer for re-downloads.
+    // If token is empty or invalid, the sale is recorded as an anonymous/guest purchase.
+    let resolvedBuyerToken : Text = switch (resolveToken(token)) {
+      case (?_aid) { token };
+      case null    { token }; // keep whatever was passed (may be a customer token or empty)
     };
     let t = switch (tracks.get(trackId)) {
       case null  { return #err("Track not found") };
@@ -653,7 +650,7 @@ mixin (
       id                  = saleId;
       trackId             = trackId;
       artistId            = t.artistId;
-      buyerToken          = buyerToken;
+      buyerToken          = resolvedBuyerToken;
       buyerEmail          = buyerEmail;
       grossAmountCents    = gross;
       artistEarningsCents = earnings;
