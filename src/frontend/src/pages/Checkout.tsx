@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { useActor } from "@caffeineai/core-infrastructure";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
+  AlertCircle,
   ArrowLeft,
   CheckCircle2,
   Crown,
@@ -19,13 +20,56 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createActor } from "../backend";
 import { useAuth } from "../hooks/use-auth";
 import { useCustomerAuth } from "../hooks/use-customer-auth";
 import { hashPin } from "../hooks/use-customer-auth";
 import { useCartStore } from "../store/cart";
+
+// ─── Persistent cart snapshot (survives Stripe redirect) ──────────────────────
+
+const CART_SNAPSHOT_KEY = "cod_cart_snapshot";
+
+interface CartSnapshot {
+  tracks: SuccessTrack[];
+  token: string;
+  customerEmail: string | null;
+  savedAt: number;
+}
+
+function saveCartSnapshot(snapshot: CartSnapshot) {
+  try {
+    localStorage.setItem(CART_SNAPSHOT_KEY, JSON.stringify(snapshot));
+  } catch {
+    // storage full — non-fatal
+  }
+}
+
+function loadCartSnapshot(): CartSnapshot | null {
+  try {
+    const raw = localStorage.getItem(CART_SNAPSHOT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CartSnapshot;
+    // Expire after 2 hours to avoid stale data
+    if (Date.now() - parsed.savedAt > 2 * 60 * 60 * 1000) {
+      localStorage.removeItem(CART_SNAPSHOT_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clearCartSnapshot() {
+  try {
+    localStorage.removeItem(CART_SNAPSHOT_KEY);
+  } catch {
+    // non-fatal
+  }
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -40,11 +84,11 @@ function triggerDownload(url: string, filename: string) {
   document.body.removeChild(a);
 }
 
-function getFormatLabel(url: string): string {
+function getFileExtension(url: string): string {
   const lower = url.toLowerCase();
-  if (lower.includes(".wav") || lower.includes("wav")) return "WAV";
-  if (lower.includes(".flac") || lower.includes("flac")) return "FLAC";
-  return "MP3";
+  if (lower.includes(".wav") || lower.includes("wav")) return "wav";
+  if (lower.includes(".flac") || lower.includes("flac")) return "flac";
+  return "mp3";
 }
 
 function getGenreColor(genre: string): string {
@@ -68,13 +112,34 @@ interface SuccessTrack {
   genre?: string;
 }
 
+// BigInt doesn't serialize via JSON.stringify — we store as strings
+interface SuccessTrackSerialized {
+  id: string;
+  title: string;
+  artistName: string;
+  audioFileUrl?: string;
+  genre?: string;
+}
+
+function serializeTracks(tracks: SuccessTrack[]): SuccessTrackSerialized[] {
+  return tracks.map((t) => ({ ...t, id: String(t.id) }));
+}
+
+function deserializeTracks(tracks: SuccessTrackSerialized[]): SuccessTrack[] {
+  return tracks.map((t) => ({ ...t, id: BigInt(t.id) }));
+}
+
 function SuccessScreen({
   tracks,
   sessionId,
+  isFulfilling,
+  fulfillError,
   onReturnToStore,
 }: {
   tracks: SuccessTrack[];
   sessionId: string;
+  isFulfilling: boolean;
+  fulfillError: string | null;
   onReturnToStore: () => void;
 }) {
   const handleDownloadReceipt = () => {
@@ -175,6 +240,7 @@ function SuccessScreen({
     <div
       className="min-h-screen flex items-center justify-center p-4"
       style={{ background: "#0a0a0a" }}
+      data-ocid="success-screen"
     >
       <div className="w-full max-w-md">
         {/* Crown animation ring */}
@@ -204,60 +270,118 @@ function SuccessScreen({
           </p>
         </div>
 
-        {/* Track list */}
+        {/* Fulfillment status banner */}
+        {isFulfilling && (
+          <div
+            className="flex items-center gap-2 px-4 py-3 rounded-lg mb-4 text-sm"
+            style={{
+              background: "rgba(212,175,55,0.08)",
+              border: "1px solid rgba(212,175,55,0.2)",
+            }}
+          >
+            <RefreshCw
+              className="w-4 h-4 animate-spin shrink-0"
+              style={{ color: "#d4af37" }}
+            />
+            <span className="text-muted-foreground">
+              Recording your purchase…
+            </span>
+          </div>
+        )}
+
+        {fulfillError && (
+          <div
+            className="flex items-start gap-2 px-4 py-3 rounded-lg mb-4 text-xs"
+            style={{
+              background: "rgba(239,68,68,0.06)",
+              border: "1px solid rgba(239,68,68,0.2)",
+            }}
+          >
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-400 mt-0.5" />
+            <span className="text-muted-foreground">
+              Could not record this purchase to your account ({fulfillError}),
+              but your downloads are still available below.
+            </span>
+          </div>
+        )}
+
+        {/* Track list with download buttons */}
         <div
           className="rounded-xl overflow-hidden mb-6"
           style={{
             border: "1px solid rgba(212,175,55,0.25)",
             background: "rgba(212,175,55,0.04)",
           }}
+          data-ocid="success-track-list"
         >
           <div
             className="px-4 py-3 border-b"
             style={{ borderColor: "rgba(212,175,55,0.15)" }}
           >
             <p className="text-sm font-semibold text-foreground">
-              {tracks.length} track{tracks.length !== 1 ? "s" : ""} purchased
+              {tracks.length} track{tracks.length !== 1 ? "s" : ""} purchased —
+              download{tracks.length !== 1 ? "s" : ""} ready
             </p>
           </div>
           <div className="p-4 space-y-3">
-            {tracks.map((t) => (
-              <div key={String(t.id)} className="flex items-center gap-3">
-                <div
-                  className={`w-10 h-10 rounded-md bg-gradient-to-br ${getGenreColor(t.genre ?? "")} flex items-center justify-center shrink-0`}
-                >
-                  <Music className="w-4 h-4 text-foreground/30" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {t.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {t.artistName}
-                  </p>
-                </div>
-                {t.audioFileUrl && (
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      if (t.audioFileUrl) {
-                        const format = getFormatLabel(t.audioFileUrl);
-                        triggerDownload(
-                          t.audioFileUrl,
-                          `${t.artistName} - ${t.title}.${format.toLowerCase()}`,
-                        );
-                      }
-                    }}
-                    className="gap-1 text-xs shrink-0 min-h-[36px]"
-                    style={{ background: "#d4af37", color: "#000" }}
-                    data-ocid={`success-download-${t.id}`}
+            {tracks.map((t) => {
+              const ext = t.audioFileUrl
+                ? getFileExtension(t.audioFileUrl)
+                : "mp3";
+              const format = ext.toUpperCase();
+              const filename = `${t.artistName} - ${t.title}.${ext}`;
+              return (
+                <div key={String(t.id)} className="flex items-center gap-3">
+                  <div
+                    className={`w-10 h-10 rounded-md bg-gradient-to-br ${getGenreColor(t.genre ?? "")} flex items-center justify-center shrink-0`}
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Download</span>
-                  </Button>
-                )}
-              </div>
-            ))}
+                    <Music className="w-4 h-4 text-foreground/30" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {t.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {t.artistName}
+                      {t.audioFileUrl && (
+                        <span
+                          className="ml-1 font-mono"
+                          style={{ color: "#d4af37" }}
+                        >
+                          · {format}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  {t.audioFileUrl ? (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        triggerDownload(t.audioFileUrl!, filename);
+                        toast.success(`Downloading "${t.title}" (${format})`);
+                      }}
+                      className="gap-1 text-xs shrink-0 min-h-[36px]"
+                      style={{ background: "#d4af37", color: "#000" }}
+                      data-ocid={`success-download-${String(t.id)}`}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>{format}</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled
+                      className="gap-1 text-xs shrink-0 min-h-[36px] opacity-50"
+                      data-ocid={`success-download-unavailable-${String(t.id)}`}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>N/A</span>
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -315,8 +439,12 @@ export default function CheckoutPage() {
   const [regConfirmPin, setRegConfirmPin] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
 
-  // Success screen
+  // Success screen state
   const [successTracks, setSuccessTracks] = useState<SuccessTrack[]>([]);
+  const [successSessionId, setSuccessSessionId] = useState("");
+  const [isFulfilling, setIsFulfilling] = useState(false);
+  const [fulfillError, setFulfillError] = useState<string | null>(null);
+  const fulfillCalledRef = useRef(false);
 
   const totalCents = cartItems.reduce(
     (sum, item) => sum + Number(item.track.priceInCents),
@@ -328,6 +456,8 @@ export default function CheckoutPage() {
   const search = useSearch({ strict: false }) as Record<string, string>;
   const isSuccess = search?.success === "true";
   const isCancelled = search?.cancel === "true";
+  // Stripe appends ?session_id=xxx automatically when redirecting back
+  const stripeSessionId = search?.session_id ?? "";
 
   useEffect(() => {
     if (isCancelled) {
@@ -343,9 +473,89 @@ export default function CheckoutPage() {
     }
   }, [hasRemovedItem, cartItems.length, navigate, isSuccess]);
 
-  // Reset state on country change tracking
-  const prevHasRemovedRef = useRef(hasRemovedItem);
-  prevHasRemovedRef.current = hasRemovedItem;
+  // ── Core fix: fulfill purchases after Stripe redirects back ─────────────────
+  const fulfillPurchases = useCallback(
+    async (
+      tracks: SuccessTrack[],
+      sessionId: string,
+      token: string,
+      email: string | null,
+    ) => {
+      if (!actor || tracks.length === 0) return;
+      if (fulfillCalledRef.current) return;
+      fulfillCalledRef.current = true;
+
+      setIsFulfilling(true);
+      setFulfillError(null);
+
+      const errors: string[] = [];
+
+      for (const track of tracks) {
+        // Use a composite session ID for multi-track purchases to avoid
+        // duplicate prevention blocking subsequent tracks in the same session
+        const compositeSessionId =
+          tracks.length > 1 ? `${sessionId}_${String(track.id)}` : sessionId;
+
+        try {
+          const result = await actor.fulfillTrackPurchase(
+            token,
+            track.id,
+            compositeSessionId,
+            email,
+          );
+          if (result.__kind__ === "err") {
+            // "already fulfilled" is fine — idempotent
+            const isAlreadyFulfilled =
+              result.err.toLowerCase().includes("already") ||
+              result.err.toLowerCase().includes("duplicate") ||
+              result.err.toLowerCase().includes("exists");
+            if (!isAlreadyFulfilled) {
+              errors.push(`"${track.title}": ${result.err}`);
+            }
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Unknown error";
+          errors.push(`"${track.title}": ${msg}`);
+        }
+      }
+
+      setIsFulfilling(false);
+      if (errors.length > 0) {
+        setFulfillError(errors.join("; "));
+      }
+
+      // Always clear the snapshot after attempting fulfillment
+      clearCartSnapshot();
+    },
+    [actor],
+  );
+
+  // On mount: if success=true, load snapshot and trigger fulfillment
+  useEffect(() => {
+    if (!isSuccess) return;
+
+    const snapshot = loadCartSnapshot();
+    if (!snapshot || snapshot.tracks.length === 0) return;
+
+    // Restore tracks from snapshot (survived the Stripe redirect)
+    const tracks = deserializeTracks(
+      snapshot.tracks as unknown as SuccessTrackSerialized[],
+    );
+    setSuccessTracks(tracks);
+    setSuccessSessionId(stripeSessionId || snapshot.token || "");
+
+    if (actor && stripeSessionId) {
+      void fulfillPurchases(
+        tracks,
+        stripeSessionId,
+        snapshot.token,
+        snapshot.customerEmail,
+      );
+    } else if (actor && !stripeSessionId) {
+      // Stripe redirected without session_id — still show downloads, skip fulfill
+      clearCartSnapshot();
+    }
+  }, [isSuccess, actor, stripeSessionId, fulfillPurchases]);
 
   const handleRemoveItem = (trackId: bigint) => {
     const item = cartItems.find((i) => i.track.id === trackId);
@@ -360,10 +570,28 @@ export default function CheckoutPage() {
     try {
       const origin = window.location.origin;
       const activeToken = customerToken ?? sessionToken ?? "";
-      const successUrl = `${origin}/checkout?success=true`;
+      // Stripe appends {CHECKOUT_SESSION_ID} automatically — we request it
+      const successUrl = `${origin}/checkout?success=true&session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${origin}/checkout?cancel=true`;
 
       let url: string | null = null;
+
+      // Snapshot cart NOW (before clearing) so it survives the redirect
+      const tracksSnapshot: SuccessTrack[] = cartItems.map((i) => ({
+        id: i.track.id,
+        title: i.track.title,
+        artistName: i.track.artistName,
+        audioFileUrl: i.track.audioFile?.getDirectURL?.(),
+        genre: i.track.genre,
+      }));
+
+      // Persist snapshot to localStorage before we navigate away
+      saveCartSnapshot({
+        tracks: serializeTracks(tracksSnapshot) as unknown as SuccessTrack[],
+        token: activeToken,
+        customerEmail: customerEmail ?? null,
+        savedAt: Date.now(),
+      });
 
       if (cartItems.length === 1) {
         const firstTrack = cartItems[0].track;
@@ -401,22 +629,14 @@ export default function CheckoutPage() {
         if (!url) throw new Error(parsed.error ?? "No checkout URL returned");
       }
 
-      // Snapshot cart before clearing, then redirect to Stripe
-      const tracksSnapshot: SuccessTrack[] = cartItems.map((i) => ({
-        id: i.track.id,
-        title: i.track.title,
-        artistName: i.track.artistName,
-        audioFileUrl: i.track.audioFile?.getDirectURL?.(),
-        genre: i.track.genre,
-      }));
       clearCart();
-      setSuccessTracks(tracksSnapshot);
 
-      // Redirect to Stripe Checkout — handles all payment methods and address
+      // Redirect to Stripe Checkout
       window.location.href = url;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Payment failed";
       toast.error(`Payment error: ${msg}`);
+      clearCartSnapshot();
       setIsProcessing(false);
     }
   };
@@ -427,7 +647,9 @@ export default function CheckoutPage() {
     return (
       <SuccessScreen
         tracks={successTracks}
-        sessionId=""
+        sessionId={successSessionId}
+        isFulfilling={isFulfilling}
+        fulfillError={fulfillError}
         onReturnToStore={() => {
           setSuccessTracks([]);
           void navigate({ to: "/store" });
@@ -436,7 +658,8 @@ export default function CheckoutPage() {
     );
   }
 
-  if (isSuccess) {
+  // Success URL hit but snapshot not yet loaded (actor still initialising)
+  if (isSuccess && successTracks.length === 0) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
@@ -456,15 +679,22 @@ export default function CheckoutPage() {
             Payment Successful! 👑
           </h1>
           <p className="text-muted-foreground text-sm">
-            Your download is being prepared in the store.
+            Preparing your downloads…
           </p>
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <RefreshCw
+              className="w-3.5 h-3.5 animate-spin"
+              style={{ color: "#d4af37" }}
+            />
+            Loading your tracks
+          </div>
           <Button
             onClick={() => void navigate({ to: "/store" })}
+            variant="outline"
             className="gap-2 min-h-[44px]"
-            style={{ background: "#d4af37", color: "#000" }}
+            style={{ borderColor: "rgba(212,175,55,0.4)", color: "#d4af37" }}
           >
-            <Download className="w-4 h-4" />
-            Go to My Downloads
+            Go to My Purchases
           </Button>
         </div>
       </div>
@@ -628,7 +858,7 @@ export default function CheckoutPage() {
                 <div
                   key={String(item.track.id)}
                   className="flex items-center gap-3 group/orderitem"
-                  data-ocid={`order-item-${item.track.id}`}
+                  data-ocid={`order-item-${String(item.track.id)}`}
                 >
                   <div
                     className={`w-10 h-10 rounded-md bg-gradient-to-br ${getGenreColor(item.track.genre)} flex items-center justify-center shrink-0 overflow-hidden`}
@@ -666,7 +896,7 @@ export default function CheckoutPage() {
                       color: "#d4af37",
                     }}
                     aria-label={`Remove "${item.track.title}"`}
-                    data-ocid={`order-remove-${item.track.id}`}
+                    data-ocid={`order-remove-${String(item.track.id)}`}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

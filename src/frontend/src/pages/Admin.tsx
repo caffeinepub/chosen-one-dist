@@ -336,10 +336,11 @@ export default function AdminPage() {
         setPin("");
         toast.success("Welcome, Admin 👑");
       } else {
-        setLoginError(result.err || "Invalid admin PIN");
+        // Never show raw backend messages like "fail to set pin" — always show a clear message
+        setLoginError("Incorrect PIN. Please try again.");
       }
     } catch {
-      setLoginError("Login failed. Please try again.");
+      setLoginError("Connection error. Please try again.");
     } finally {
       setIsLoggingIn(false);
     }
@@ -387,44 +388,52 @@ export default function AdminPage() {
       const defaultPinHash = await hashPin("000000");
 
       // Path A: try logging in with the factory default (000000) first
-      const loginResult = await actor.adminLogin(defaultPinHash);
-      if (loginResult.__kind__ === "ok") {
-        const tempToken = loginResult.ok;
-        // Default login worked — change from default to new PIN
-        const changeResult = await actor.adminChangePIN(
-          tempToken,
-          defaultPinHash,
-          newPinHash,
-        );
-        try {
-          await actor.adminLogout(tempToken);
-        } catch {
-          /* ignore */
-        }
-        if (changeResult.__kind__ === "ok") {
-          // Auto sign in with the new PIN
-          const finalLogin = await actor.adminLogin(newPinHash);
-          if (finalLogin.__kind__ === "ok") {
-            sessionStorage.setItem(ADMIN_TOKEN_KEY, finalLogin.ok);
-            setAdminToken(finalLogin.ok);
-          }
-          toast.success(
-            "Admin PIN set to 8914! 👑 Welcome to the control panel.",
+      let pathASuccess = false;
+      try {
+        const loginResult = await actor.adminLogin(defaultPinHash);
+        if (loginResult.__kind__ === "ok") {
+          pathASuccess = true;
+          const tempToken = loginResult.ok;
+          // Default login worked — change from default to new PIN
+          const changeResult = await actor.adminChangePIN(
+            tempToken,
+            defaultPinHash,
+            newPinHash,
           );
-          setNewSetPin("");
-          setConfirmSetPin("");
-          setSetInitialPinError("");
-          return;
+          try {
+            await actor.adminLogout(tempToken);
+          } catch {
+            /* ignore */
+          }
+          if (changeResult.__kind__ === "ok") {
+            // Auto sign in with the new PIN
+            const finalLogin = await actor.adminLogin(newPinHash);
+            if (finalLogin.__kind__ === "ok") {
+              sessionStorage.setItem(ADMIN_TOKEN_KEY, finalLogin.ok);
+              setAdminToken(finalLogin.ok);
+            }
+            toast.success("Admin PIN set! 👑 Welcome to the control panel.");
+            setNewSetPin("");
+            setConfirmSetPin("");
+            setSetInitialPinError("");
+            return;
+          }
+          // changePIN failed after default login — PIN may already be personalized
         }
+      } catch {
+        /* Path A failed — continue to Path B */
+      }
+
+      if (pathASuccess) {
+        // Path A logged in but changePIN failed — PIN is already personalized
         setSetInitialPinError(
-          changeResult.err ||
-            "Could not set PIN. If you already have a PIN, use the Sign In tab.",
+          "A PIN is already set. Use the Sign In tab to log in with your existing PIN.",
         );
         return;
       }
 
       // Path B: default login rejected — try adminInitializePIN directly
-      // (works when pinHash is empty or equals SHA-256('000000') on the backend)
+      // (works when pinHash is empty on the backend)
       const initResult = await callAdminInitializePIN(newPinHash);
       if (initResult.__kind__ === "ok") {
         // PIN was set — auto sign in with the new PIN
@@ -447,12 +456,14 @@ export default function AdminPage() {
         return;
       }
 
-      // Path C: both paths failed — PIN is already set
+      // Both paths failed — PIN is already set with a personalized value
       setSetInitialPinError(
-        "PIN is already set — please use the Sign In tab to enter your existing PIN.",
+        "A PIN is already set. Use the Sign In tab to log in with your existing PIN.",
       );
     } catch {
-      setSetInitialPinError("Failed to set PIN. Please try again.");
+      setSetInitialPinError(
+        "A PIN is already set. Use the Sign In tab to log in with your existing PIN.",
+      );
     } finally {
       setIsSettingPin(false);
     }
@@ -747,11 +758,21 @@ export default function AdminPage() {
                 </h2>
               </div>
               <p className="text-muted-foreground text-sm mb-5 leading-relaxed">
-                Use this tab to set your admin PIN for the first time — this
-                only works if no PIN has been set yet. Choose a secure 4–6 digit
-                PIN that only you know. Once set, use the{" "}
-                <strong className="text-foreground">Sign In</strong> tab to
-                enter the panel.
+                Use this tab{" "}
+                <strong className="text-foreground">
+                  only if you have never set an admin PIN before
+                </strong>
+                . If you already have a PIN, go to the{" "}
+                <button
+                  type="button"
+                  className="text-primary hover:underline font-medium"
+                  onClick={() => {
+                    setLoginMode("login");
+                    setSetInitialPinError("");
+                  }}
+                >
+                  Sign In tab →
+                </button>
               </p>
 
               <form onSubmit={handleSetInitialPIN} className="space-y-4">
@@ -855,9 +876,23 @@ export default function AdminPage() {
 
                 {/* Error */}
                 {setInitialPinError && (
-                  <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2.5">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{setInitialPinError}</span>
+                  <div className="flex flex-col gap-2 text-destructive text-sm bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2.5">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>{setInitialPinError}</span>
+                    </div>
+                    {setInitialPinError.includes("Sign In") && (
+                      <button
+                        type="button"
+                        className="self-start ml-6 text-primary hover:underline text-xs font-medium"
+                        onClick={() => {
+                          setLoginMode("login");
+                          setSetInitialPinError("");
+                        }}
+                      >
+                        Go to Sign In →
+                      </button>
+                    )}
                   </div>
                 )}
 
