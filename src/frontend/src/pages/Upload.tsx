@@ -42,6 +42,23 @@ function unwrapResult<T>(
   return result.ok;
 }
 
+/** Returns true when the error is a transient storage/platform error (not a validation error). */
+function isStorageError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.toLowerCase().includes("v3") ||
+    msg.toLowerCase().includes("certificate") ||
+    msg.toLowerCase().includes("expected v3") ||
+    msg.toLowerCase().includes("response body") ||
+    msg.toLowerCase().includes("canister is stopped") ||
+    msg.toLowerCase().includes("ic0508") ||
+    msg.toLowerCase().includes("canister stopped") ||
+    msg.toLowerCase().includes("network") ||
+    msg.toLowerCase().includes("fetch") ||
+    msg.toLowerCase().includes("failed to fetch")
+  );
+}
+
 /** Translate platform-level storage errors into clear artist-facing messages. */
 function classifyUploadError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
@@ -51,7 +68,7 @@ function classifyUploadError(err: unknown): string {
     msg.toLowerCase().includes("expected v3") ||
     msg.toLowerCase().includes("response body")
   ) {
-    return "Storage service is temporarily unavailable. Please wait 30 seconds and try again.";
+    return "Upload temporarily unavailable — the storage service is initializing. Please try again in a moment.";
   }
   if (
     msg.toLowerCase().includes("canister is stopped") ||
@@ -70,30 +87,27 @@ function classifyUploadError(err: unknown): string {
   return msg || "Upload failed. Please try again.";
 }
 
-/** Retry an async operation with exponential backoff. */
+/** Delays (ms) between successive retry attempts — covers IC storage cold-starts (up to 30-45s). */
+const RETRY_DELAYS = [3000, 6000, 12000, 20000, 30000];
+
+/**
+ * Retry an async operation with fixed backoff delays.
+ * onWarmingUp is called on the FIRST retryable failure so the UI can show a
+ * non-blocking "storage is warming up" status before all retries are exhausted.
+ */
 async function withUploadRetry<T>(
   fn: () => Promise<T>,
-  retries = 3,
-  baseDelayMs = 3000,
+  onWarmingUp?: () => void,
 ): Promise<T> {
   let lastErr: unknown;
-  for (let attempt = 0; attempt <= retries; attempt++) {
+  for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
     try {
       return await fn();
     } catch (err) {
       lastErr = err;
-      const msg = err instanceof Error ? err.message : String(err);
-      // Only retry on storage/v3 errors, not on validation errors
-      const isRetryable =
-        msg.toLowerCase().includes("v3") ||
-        msg.toLowerCase().includes("certificate") ||
-        msg.toLowerCase().includes("response body") ||
-        msg.toLowerCase().includes("network") ||
-        msg.toLowerCase().includes("failed to fetch") ||
-        msg.toLowerCase().includes("canister is stopped");
-      if (!isRetryable || attempt === retries) break;
-      const delay = baseDelayMs * 2 ** attempt;
-      await new Promise((res) => setTimeout(res, delay));
+      if (!isStorageError(err) || attempt === RETRY_DELAYS.length) break;
+      if (attempt === 0 && onWarmingUp) onWarmingUp();
+      await new Promise((res) => setTimeout(res, RETRY_DELAYS[attempt]));
     }
   }
   throw lastErr;
@@ -865,11 +879,18 @@ export default function Upload() {
   ]);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [success, setSuccess] = useState(false);
+  /** Set to true on the first transient storage failure — shows warming-up status. */
+  const [storageWarmingUp, setStorageWarmingUp] = useState(false);
+  /** Non-null when all retries are exhausted on a storage error — enables Try Again UI. */
+  const [storageError, setStorageError] = useState<Error | null>(null);
+  /** Holds the last tracks array so we can re-trigger without re-filling the form. */
+  const lastTracksRef = useRef<TrackFormData[]>([]);
 
   const uploadMutation = useMutation({
     mutationFn: async (tracks: TrackFormData[]) => {
       if (!actor) throw new Error("Not connected to backend");
       if (!sessionToken) throw new Error("Not logged in.");
+      lastTracksRef.current = tracks;
       const uploadedTitles: string[] = [];
 
       for (let i = 0; i < tracks.length; i++) {
@@ -924,32 +945,43 @@ export default function Upload() {
           Math.round(Number.parseFloat(track.price) * 100),
         );
 
-        // Retry the upload on transient storage/v3 errors
-        const trackId = await withUploadRetry(async () => {
-          const uploadResult = await actor.uploadTrack(sessionToken, {
-            title: track.title,
-            artistName: track.artistName,
-            genre: finalGenre,
-            trackType: track.trackType,
-            priceInCents,
-            description: track.description,
-            releaseDate:
-              track.releaseDate || new Date().toISOString().split("T")[0],
-            explicit: track.explicit,
-            preOrder: track.preOrder,
-            audioFile: audioBlob,
-            coverArt: coverBlob,
-            previewStartSecs: track.previewStartSecs,
-            previewEndSecs: track.previewEndSecs,
-            songDetails: track.songDetails || undefined,
-          });
-          return unwrapResult(uploadResult);
-        });
+        // Retry the upload on transient storage/v3 errors.
+        // Cover art is bundled into the same uploadTrack call as audio, so
+        // any ExternalBlob error from either file is caught by the same wrapper.
+        const trackId = await withUploadRetry(
+          async () => {
+            const uploadResult = await actor.uploadTrack(sessionToken, {
+              title: track.title,
+              artistName: track.artistName,
+              genre: finalGenre,
+              trackType: track.trackType,
+              priceInCents,
+              description: track.description,
+              releaseDate:
+                track.releaseDate || new Date().toISOString().split("T")[0],
+              explicit: track.explicit,
+              preOrder: track.preOrder,
+              audioFile: audioBlob,
+              coverArt: coverBlob,
+              previewStartSecs: track.previewStartSecs,
+              previewEndSecs: track.previewEndSecs,
+              songDetails: track.songDetails || undefined,
+            });
+            return unwrapResult(uploadResult);
+          },
+          () => setStorageWarmingUp(true),
+        );
 
-        await withUploadRetry(async () => {
-          const publishResult = await actor.publishTrack(sessionToken, trackId);
-          unwrapResult(publishResult);
-        });
+        await withUploadRetry(
+          async () => {
+            const publishResult = await actor.publishTrack(
+              sessionToken,
+              trackId,
+            );
+            unwrapResult(publishResult);
+          },
+          () => setStorageWarmingUp(true),
+        );
 
         try {
           await actor.notifyTrackUploaded(sessionToken, track.title);
@@ -962,6 +994,8 @@ export default function Upload() {
       return uploadedTitles;
     },
     onSuccess: (uploadedTitles) => {
+      setStorageWarmingUp(false);
+      setStorageError(null);
       setSuccess(true);
       queryClient.invalidateQueries({ queryKey: ["artist-tracks"] });
       queryClient.invalidateQueries({ queryKey: ["published-tracks"] });
@@ -974,7 +1008,13 @@ export default function Upload() {
       showCrownBanner(msg);
     },
     onError: (err: Error) => {
-      toast.error(classifyUploadError(err));
+      setStorageWarmingUp(false);
+      if (isStorageError(err)) {
+        setStorageError(err);
+      } else {
+        setStorageError(null);
+        toast.error(classifyUploadError(err));
+      }
     },
   });
 
@@ -984,6 +1024,8 @@ export default function Upload() {
       toast.error("Please accept the Terms of Service to continue.");
       return;
     }
+    setStorageWarmingUp(false);
+    setStorageError(null);
     const tracks = activeTab === "single" ? [singleTrack] : albumTracks;
     uploadMutation.mutate(tracks);
   };
@@ -999,6 +1041,8 @@ export default function Upload() {
     setAlbumTracks([emptyTrack()]);
     setTermsAccepted(false);
     setSuccess(false);
+    setStorageWarmingUp(false);
+    setStorageError(null);
   };
 
   if (!isAuthenticated) {
@@ -1154,9 +1198,38 @@ export default function Upload() {
 
             {uploadMutation.isPending && (
               <p className="text-xs text-muted-foreground text-center animate-pulse">
-                Uploading your files — this may take a moment for large audio
-                files…
+                {storageWarmingUp
+                  ? "⚡ Storage is warming up, please wait — this may take up to a minute…"
+                  : "Uploading your files — this may take a moment for large audio files…"}
               </p>
+            )}
+
+            {/* Storage error: all retries exhausted — show Try Again */}
+            {storageError && !uploadMutation.isPending && (
+              <div
+                className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3"
+                data-ocid="storage-error-banner"
+              >
+                <p className="text-sm font-medium text-foreground">
+                  Upload temporarily unavailable — the storage service is
+                  initializing. Please try again in a moment.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-primary/50 text-primary hover:bg-primary/10"
+                  onClick={() => {
+                    setStorageError(null);
+                    setStorageWarmingUp(false);
+                    uploadMutation.mutate(lastTracksRef.current);
+                  }}
+                  data-ocid="storage-retry-btn"
+                >
+                  <UploadIcon className="w-4 h-4" />
+                  Try Again
+                </Button>
+              </div>
             )}
           </div>
         </form>
