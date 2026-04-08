@@ -172,17 +172,6 @@ export interface ArtistProfilePublic {
     appleMusic?: string;
 }
 export type ArtistId = string;
-export interface AdminTrafficStats {
-    activeVisitors: bigint;
-    totalPreviewsAllTime: bigint;
-    recentSignups: bigint;
-    grossRevenueCents: bigint;
-    pageViewsBySection: Array<[string, bigint]>;
-    pageViewsLast5Min: bigint;
-    totalSalesAllTime: bigint;
-    totalPublishedTracks: bigint;
-    recentPurchases: bigint;
-}
 export interface StoreCommentPublic {
     id: CommentId;
     authorId: ArtistId;
@@ -386,13 +375,6 @@ export interface backendInterface {
         __kind__: "err";
         err: string;
     }>;
-    getAdminTrafficStats(token: string): Promise<{
-        __kind__: "ok";
-        ok: AdminTrafficStats;
-    } | {
-        __kind__: "err";
-        err: string;
-    }>;
     getArtistDashboardStats(token: string): Promise<{
         __kind__: "ok";
         ok: ArtistDashboardStats;
@@ -524,7 +506,6 @@ export interface backendInterface {
         __kind__: "err";
         err: string;
     }>;
-    recordPageView(section: string, sessionId: string): Promise<void>;
     requestPayout(token: string, amountCents: bigint): Promise<{
         __kind__: "ok";
         ok: PayoutId;

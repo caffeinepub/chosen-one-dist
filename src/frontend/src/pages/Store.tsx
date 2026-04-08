@@ -29,7 +29,6 @@ import {
   Trash2,
   TrendingUp,
   Trophy,
-  Users,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -275,24 +274,6 @@ function generateReceiptPng(
   ctx.font = "11px monospace";
   ctx.fillText("chosenonedist.com", W / 2, y);
   return canvas.toDataURL("image/png");
-}
-
-// ─── Viewer count hook ────────────────────────────────────────────────────────
-
-function useViewerCount() {
-  const [count, setCount] = useState(
-    () => Math.floor(Math.random() * 4001) + 5000,
-  );
-  useEffect(() => {
-    const tick = setInterval(() => {
-      setCount((prev) => {
-        const delta = Math.floor(Math.random() * 41) - 20;
-        return Math.min(9000, Math.max(5000, prev + delta));
-      });
-    }, 4000);
-    return () => clearInterval(tick);
-  }, []);
-  return count;
 }
 
 // ─── Like Button ─────────────────────────────────────────────────────────────
@@ -1682,7 +1663,6 @@ export default function Store() {
   const [successSessionId, setSuccessSessionId] = useState("");
   const [fulfillAttempted, setFulfillAttempted] = useState(false);
   const [showCart, setShowCart] = useState(false);
-  const viewerCount = useViewerCount();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -1889,19 +1869,6 @@ export default function Store() {
 
             {/* Stats row + cart/share — responsive */}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <div
-                className="flex items-center gap-1.5 sm:gap-2 bg-muted/60 border border-border rounded-full px-3 sm:px-4 py-1.5 sm:py-2"
-                data-ocid="store-viewer-count"
-              >
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block" />
-                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
-                <span className="text-xs sm:text-sm font-semibold text-foreground">
-                  {viewerCount.toLocaleString()}{" "}
-                  <span className="hidden sm:inline">viewers</span>
-                  <span className="sm:hidden">live</span>
-                </span>
-                <span className="text-red-500 font-bold text-xs">🔴</span>
-              </div>
               <PlatformShareButton />
               <Button
                 variant="outline"

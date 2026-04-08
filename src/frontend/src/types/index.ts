@@ -1485,7 +1485,6 @@ export type {
   RealTimeDashboardStats,
   DownloadReportEntry,
   ArtistAdminView,
-  AdminTrafficStats,
 } from "../backend";
 
 export {

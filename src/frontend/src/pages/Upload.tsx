@@ -42,6 +42,63 @@ function unwrapResult<T>(
   return result.ok;
 }
 
+/** Translate platform-level storage errors into clear artist-facing messages. */
+function classifyUploadError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (
+    msg.toLowerCase().includes("v3") ||
+    msg.toLowerCase().includes("certificate") ||
+    msg.toLowerCase().includes("expected v3") ||
+    msg.toLowerCase().includes("response body")
+  ) {
+    return "Storage service is temporarily unavailable. Please wait 30 seconds and try again.";
+  }
+  if (
+    msg.toLowerCase().includes("canister is stopped") ||
+    msg.toLowerCase().includes("ic0508") ||
+    msg.toLowerCase().includes("canister stopped")
+  ) {
+    return "The platform is restarting. Please wait a minute and try uploading again.";
+  }
+  if (
+    msg.toLowerCase().includes("network") ||
+    msg.toLowerCase().includes("fetch") ||
+    msg.toLowerCase().includes("failed to fetch")
+  ) {
+    return "Network error during upload. Check your connection and try again.";
+  }
+  return msg || "Upload failed. Please try again.";
+}
+
+/** Retry an async operation with exponential backoff. */
+async function withUploadRetry<T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  baseDelayMs = 3000,
+): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      // Only retry on storage/v3 errors, not on validation errors
+      const isRetryable =
+        msg.toLowerCase().includes("v3") ||
+        msg.toLowerCase().includes("certificate") ||
+        msg.toLowerCase().includes("response body") ||
+        msg.toLowerCase().includes("network") ||
+        msg.toLowerCase().includes("failed to fetch") ||
+        msg.toLowerCase().includes("canister is stopped");
+      if (!isRetryable || attempt === retries) break;
+      const delay = baseDelayMs * 2 ** attempt;
+      await new Promise((res) => setTimeout(res, delay));
+    }
+  }
+  throw lastErr;
+}
+
 const GENRES = [
   "Hip-Hop",
   "R&B",
@@ -866,26 +923,33 @@ export default function Upload() {
         const priceInCents = BigInt(
           Math.round(Number.parseFloat(track.price) * 100),
         );
-        const uploadResult = await actor.uploadTrack(sessionToken, {
-          title: track.title,
-          artistName: track.artistName,
-          genre: finalGenre,
-          trackType: track.trackType,
-          priceInCents,
-          description: track.description,
-          releaseDate:
-            track.releaseDate || new Date().toISOString().split("T")[0],
-          explicit: track.explicit,
-          preOrder: track.preOrder,
-          audioFile: audioBlob,
-          coverArt: coverBlob,
-          previewStartSecs: track.previewStartSecs,
-          previewEndSecs: track.previewEndSecs,
-          songDetails: track.songDetails || undefined,
+
+        // Retry the upload on transient storage/v3 errors
+        const trackId = await withUploadRetry(async () => {
+          const uploadResult = await actor.uploadTrack(sessionToken, {
+            title: track.title,
+            artistName: track.artistName,
+            genre: finalGenre,
+            trackType: track.trackType,
+            priceInCents,
+            description: track.description,
+            releaseDate:
+              track.releaseDate || new Date().toISOString().split("T")[0],
+            explicit: track.explicit,
+            preOrder: track.preOrder,
+            audioFile: audioBlob,
+            coverArt: coverBlob,
+            previewStartSecs: track.previewStartSecs,
+            previewEndSecs: track.previewEndSecs,
+            songDetails: track.songDetails || undefined,
+          });
+          return unwrapResult(uploadResult);
         });
-        const trackId = unwrapResult(uploadResult);
-        const publishResult = await actor.publishTrack(sessionToken, trackId);
-        unwrapResult(publishResult);
+
+        await withUploadRetry(async () => {
+          const publishResult = await actor.publishTrack(sessionToken, trackId);
+          unwrapResult(publishResult);
+        });
 
         try {
           await actor.notifyTrackUploaded(sessionToken, track.title);
@@ -910,7 +974,7 @@ export default function Upload() {
       showCrownBanner(msg);
     },
     onError: (err: Error) => {
-      toast.error(err.message || "Upload failed. Please try again.");
+      toast.error(classifyUploadError(err));
     },
   });
 

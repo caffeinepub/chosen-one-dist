@@ -84,8 +84,6 @@ type Notification__516868361 =
     recipientToken : ?Text;
     timestamp : Timestamp__284646776
   };
-type PageViewEvent__22893784 =
-  {section : Text; sessionId : Text; timestamp : Int};
 type PayoutId__751206570 = Nat;
 type PayoutId__818491590 = PayoutId__751206570;
 type PayoutStatus__532520630 = {#failed; #pending; #processed};
@@ -210,12 +208,6 @@ actor {
       var blocks : [var [var ?Notification__516868361]];
       var elementIndex : Nat__490723111
     };
-  stable pageViewEvents :
-    {
-      var blockIndex : Nat__490723111;
-      var blocks : [var [var ?PageViewEvent__22893784]];
-      var elementIndex : Nat__490723111
-    };
   stable payouts :
     {
       var blockIndex : Nat__490723111;
@@ -249,7 +241,5 @@ actor {
     {
       var root : Node__46230540<Nat, TrackMetadata__84047983>;
       var size : Nat__490723111
-    };
-  stable visitorSessions :
-    {var root : Node__46230540<Text, Int>; var size : Nat__490723111}
+    }
 };

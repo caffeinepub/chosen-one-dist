@@ -82,17 +82,6 @@ export const TrackMetadataPublic = IDL.Record({
   'priceInCents' : IDL.Nat,
   'releaseDate' : IDL.Text,
 });
-export const AdminTrafficStats = IDL.Record({
-  'activeVisitors' : IDL.Nat,
-  'totalPreviewsAllTime' : IDL.Nat,
-  'recentSignups' : IDL.Nat,
-  'grossRevenueCents' : IDL.Nat,
-  'pageViewsBySection' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat)),
-  'pageViewsLast5Min' : IDL.Nat,
-  'totalSalesAllTime' : IDL.Nat,
-  'totalPublishedTracks' : IDL.Nat,
-  'recentPurchases' : IDL.Nat,
-});
 export const ArtistDashboardStats = IDL.Record({
   'totalTracks' : IDL.Nat,
   'totalEarningsCents' : IDL.Nat,
@@ -391,11 +380,6 @@ export const idlService = IDL.Service({
       [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
       [],
     ),
-  'getAdminTrafficStats' : IDL.Func(
-      [IDL.Text],
-      [IDL.Variant({ 'ok' : AdminTrafficStats, 'err' : IDL.Text })],
-      ['query'],
-    ),
   'getArtistDashboardStats' : IDL.Func(
       [IDL.Text],
       [IDL.Variant({ 'ok' : ArtistDashboardStats, 'err' : IDL.Text })],
@@ -521,7 +505,6 @@ export const idlService = IDL.Service({
       [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
       [],
     ),
-  'recordPageView' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'requestPayout' : IDL.Func(
       [IDL.Text, IDL.Nat],
       [IDL.Variant({ 'ok' : PayoutId, 'err' : IDL.Text })],
@@ -689,17 +672,6 @@ export const idlFactory = ({ IDL }) => {
     'coverArt' : ExternalBlob,
     'priceInCents' : IDL.Nat,
     'releaseDate' : IDL.Text,
-  });
-  const AdminTrafficStats = IDL.Record({
-    'activeVisitors' : IDL.Nat,
-    'totalPreviewsAllTime' : IDL.Nat,
-    'recentSignups' : IDL.Nat,
-    'grossRevenueCents' : IDL.Nat,
-    'pageViewsBySection' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat)),
-    'pageViewsLast5Min' : IDL.Nat,
-    'totalSalesAllTime' : IDL.Nat,
-    'totalPublishedTracks' : IDL.Nat,
-    'recentPurchases' : IDL.Nat,
   });
   const ArtistDashboardStats = IDL.Record({
     'totalTracks' : IDL.Nat,
@@ -996,11 +968,6 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
         [],
       ),
-    'getAdminTrafficStats' : IDL.Func(
-        [IDL.Text],
-        [IDL.Variant({ 'ok' : AdminTrafficStats, 'err' : IDL.Text })],
-        ['query'],
-      ),
     'getArtistDashboardStats' : IDL.Func(
         [IDL.Text],
         [IDL.Variant({ 'ok' : ArtistDashboardStats, 'err' : IDL.Text })],
@@ -1150,7 +1117,6 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
         [],
       ),
-    'recordPageView' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'requestPayout' : IDL.Func(
         [IDL.Text, IDL.Nat],
         [IDL.Variant({ 'ok' : PayoutId, 'err' : IDL.Text })],

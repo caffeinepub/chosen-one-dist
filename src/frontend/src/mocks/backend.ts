@@ -1,4 +1,4 @@
-import type { backendInterface, TrackMetadataPublic, ArtistTrackSummary, StoreCommentPublic, ArtistDashboardStats, RoyaltyDashboard, PayoutPublic, BankingInfoPublic, ArtistProfilePublic, ArtistAdminView, RealTimeDashboardStats, DownloadReportEntry, AdminTrafficStats } from "../backend";
+import type { backendInterface, TrackMetadataPublic, ArtistTrackSummary, StoreCommentPublic, ArtistDashboardStats, RoyaltyDashboard, PayoutPublic, BankingInfoPublic, ArtistProfilePublic, ArtistAdminView, RealTimeDashboardStats, DownloadReportEntry } from "../backend";
 import { ArtistStatus, LikeResult, PayoutStatus, TrackState, TrackType, UserRole } from "../backend";
 import { Principal } from "@icp-sdk/core/principal";
 
@@ -205,22 +205,6 @@ export const mockBackend: backendInterface = {
   deleteTrack: async () => ok(null),
   filterTracksByGenre: async () => sampleTracks,
   fulfillTrackPurchase: async () => ok(null),
-  getAdminTrafficStats: async (): Promise<{ __kind__: "ok"; ok: AdminTrafficStats } | { __kind__: "err"; err: string }> => ok({
-    activeVisitors: BigInt(247),
-    pageViewsLast5Min: BigInt(89),
-    pageViewsBySection: [
-      ["store", BigInt(42)] as [string, bigint],
-      ["home", BigInt(28)] as [string, bigint],
-      ["artist", BigInt(12)] as [string, bigint],
-      ["upload", BigInt(7)] as [string, bigint],
-    ],
-    totalPublishedTracks: BigInt(3),
-    totalSalesAllTime: BigInt(137),
-    totalPreviewsAllTime: BigInt(551),
-    grossRevenueCents: BigInt(42350),
-    recentSignups: BigInt(5),
-    recentPurchases: BigInt(23),
-  }),
   getArtistDashboardStats: async () => ok(sampleDashboardStats),
   getArtistProfile: async (_artistId: string) => ok(sampleArtistProfile),
   getArtistStoreLikes: async () => BigInt(0),
@@ -261,7 +245,6 @@ export const mockBackend: backendInterface = {
   notifyNewSale: async () => undefined,
   notifyTrackUploaded: async () => undefined,
   publishTrack: async () => ok(null),
-  recordPageView: async () => undefined,
   requestPayout: async () => ok(BigInt(1)),
   getArtistSecurityQuestion: async (_artistName: string): Promise<string | null> => "What is the name of your first pet?",
   resetPINWithSecurityAnswer: async () => ok(null),

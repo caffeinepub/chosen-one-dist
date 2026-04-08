@@ -282,21 +282,6 @@ type ArtistAdminView =
    name: text;
    status: ArtistStatus;
  };
-type AdminTrafficStats = 
- record {
-   activeVisitors: nat;
-   grossRevenueCents: nat;
-   pageViewsBySection: vec record {
-                             text;
-                             nat;
-                           };
-   pageViewsLast5Min: nat;
-   recentPurchases: nat;
-   recentSignups: nat;
-   totalPreviewsAllTime: nat;
-   totalPublishedTracks: nat;
-   totalSalesAllTime: nat;
- };
 service : {
   _immutableObjectStorageBlobsAreLive: (hashes: vec blob) -> (vec bool) query;
   _immutableObjectStorageBlobsToDelete: () -> (vec blob) query;
@@ -387,11 +372,6 @@ service : {
                                      err: text;
                                      ok;
                                    });
-  getAdminTrafficStats: (token: text) ->
-   (variant {
-      err: text;
-      ok: AdminTrafficStats;
-    }) query;
   getArtistDashboardStats: (token: text) ->
    (variant {
       err: text;
@@ -490,7 +470,6 @@ service : {
                                                       err: text;
                                                       ok;
                                                     });
-  recordPageView: (section: text, sessionId: text) -> ();
   requestPayout: (token: text, amountCents: nat) ->
    (variant {
       err: text;

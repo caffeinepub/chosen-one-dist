@@ -3,6 +3,7 @@ import Set "mo:core/Set";
 import List "mo:core/List";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
+
 import AccessControl "mo:caffeineai-authorization/access-control";
 import MixinAuthorization "mo:caffeineai-authorization/MixinAuthorization";
 import MixinObjectStorage "mo:caffeineai-object-storage/Mixin";
@@ -11,15 +12,15 @@ import OutCall "mo:caffeineai-http-outcalls/outcall";
 import Types "types/artists-tracks-payments";
 import AdminTypes "types/admin";
 import AnalyticsTypes "types/analytics-notifications";
-import TrafficTypes "types/traffic-analytics";
 import LikesTypes "types/likes";
 import ArtistsMixin "mixins/artists-tracks-payments-api";
 import AnalyticsMixin "mixins/analytics-notifications-api";
 import LikesMixin "mixins/likes-api";
 import AdminMixin "mixins/admin-api";
-import TrafficMixin "mixins/traffic-analytics-api";
+
 import SupportChatMixin "mixins/support-chat-api";
 import CustomerAuthMixin "mixins/customer-auth-api";
+
 
 
 
@@ -71,13 +72,6 @@ actor {
     var pinHash       = "";
     var sessionTokens = [];
   };
-
-  // ─── Traffic Analytics State ──────────────────────────────────────────────
-  // Page view events: pruned to last 5 minutes on every recordPageView call.
-  let pageViewEvents  = List.empty<TrafficTypes.PageViewEvent>();
-  // Visitor sessions: sessionId -> lastSeen nanosecond timestamp, also pruned.
-  let visitorSessions = Map.empty<Text, Int>();
-
   // ─── Stripe transform (required by caffeineai-stripe) ────────────────────
   public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
     OutCall.transform(input);
@@ -156,17 +150,6 @@ actor {
     credentials,
     tracks,
   );
-
-  // ─── Traffic Analytics Mixin ──────────────────────────────────────────────
-  include TrafficMixin(
-    _adminCredential,
-    pageViewEvents,
-    visitorSessions,
-    tracks,
-    artists,
-    sales,
-  );
-
   // ─── Support Chat Mixin ───────────────────────────────────────────────────
   include SupportChatMixin(transform);
 

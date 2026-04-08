@@ -6,22 +6,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useActor } from "@caffeineai/core-infrastructure";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Activity,
   AlertTriangle,
-  BarChart2,
   CheckCircle2,
   CreditCard,
-  DollarSign,
-  Eye,
   KeyRound,
   Lock,
-  Music,
   RefreshCw,
   Settings,
   Shield,
-  ShoppingBag,
   Trash2,
-  TrendingUp,
   UserCheck,
   UserX,
   Users,
@@ -30,11 +23,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createActor } from "../backend";
 import { ArtistStatus } from "../backend";
-import type {
-  AdminTrafficStats,
-  ArtistAdminView,
-  TrackMetadataPublic,
-} from "../backend";
+import type { ArtistAdminView } from "../backend";
 import { hashPin } from "../hooks/use-auth";
 import { useTranslation } from "../hooks/use-translation";
 
@@ -73,277 +62,6 @@ function formatLastLogin(ts: bigint | null | undefined): string {
   });
 }
 
-// ─── Real-Time Traffic Panel ──────────────────────────────────────────────────
-
-interface TrafficPanelProps {
-  actor: ReturnType<typeof createActor> | null;
-  adminToken: string;
-}
-
-function TrafficPanel({ actor, adminToken }: TrafficPanelProps) {
-  const {
-    data: trafficStats,
-    dataUpdatedAt,
-    isLoading: trafficLoading,
-    refetch,
-  } = useQuery<AdminTrafficStats | null>({
-    queryKey: ["admin-traffic-stats", adminToken],
-    queryFn: async () => {
-      if (!actor || !adminToken) return null;
-      const result = await actor.getAdminTrafficStats(adminToken);
-      if (result.__kind__ === "ok") return result.ok;
-      return null;
-    },
-    enabled: !!actor && !!adminToken,
-    refetchInterval: 10_000,
-  });
-
-  const { data: tracks = [] } = useQuery<TrackMetadataPublic[]>({
-    queryKey: ["admin-traffic-tracks"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.listPublishedTracks();
-    },
-    enabled: !!actor,
-    refetchInterval: 30_000,
-  });
-
-  const topTracks = [...tracks]
-    .sort((a, b) => Number(b.saleCount) - Number(a.saleCount))
-    .slice(0, 5);
-
-  const lastUpdated = dataUpdatedAt
-    ? new Date(dataUpdatedAt).toLocaleTimeString()
-    : "—";
-
-  const grossRevenueCents = trafficStats
-    ? Number(trafficStats.grossRevenueCents)
-    : 0;
-
-  const statCards = [
-    {
-      label: "Active Visitors",
-      value: trafficStats
-        ? Number(trafficStats.activeVisitors).toLocaleString()
-        : "—",
-      icon: Eye,
-      color: "text-red-400",
-      bg: "bg-red-500/10 border-red-500/20",
-      pulse: true,
-    },
-    {
-      label: "Page Views (5 min)",
-      value: trafficStats
-        ? Number(trafficStats.pageViewsLast5Min).toLocaleString()
-        : "—",
-      icon: Activity,
-      color: "text-sky-400",
-      bg: "bg-sky-500/10 border-sky-500/20",
-      pulse: false,
-    },
-    {
-      label: "Previews Played Today",
-      value: trafficStats
-        ? Number(trafficStats.totalPreviewsAllTime).toLocaleString()
-        : "—",
-      icon: BarChart2,
-      color: "text-sky-300",
-      bg: "bg-sky-500/10 border-sky-400/20",
-      pulse: false,
-    },
-    {
-      label: "Purchases (24h)",
-      value: trafficStats
-        ? Number(trafficStats.recentPurchases).toLocaleString()
-        : "—",
-      icon: ShoppingBag,
-      color: "text-emerald-400",
-      bg: "bg-emerald-500/10 border-emerald-500/20",
-      pulse: false,
-    },
-    {
-      label: "New Sign-ups (24h)",
-      value: trafficStats
-        ? Number(trafficStats.recentSignups).toLocaleString()
-        : "—",
-      icon: Users,
-      color: "text-violet-400",
-      bg: "bg-violet-500/10 border-violet-500/20",
-      pulse: false,
-    },
-    {
-      label: "Published Tracks",
-      value: trafficStats
-        ? Number(trafficStats.totalPublishedTracks).toLocaleString()
-        : "—",
-      icon: Music,
-      color: "text-primary",
-      bg: "bg-primary/10 border-primary/20",
-      pulse: false,
-    },
-    {
-      label: "Total Sales",
-      value: trafficStats
-        ? Number(trafficStats.totalSalesAllTime).toLocaleString()
-        : "—",
-      icon: TrendingUp,
-      color: "text-amber-400",
-      bg: "bg-amber-500/10 border-amber-500/20",
-      pulse: false,
-    },
-    {
-      label: "Gross Revenue",
-      value: `$${(grossRevenueCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      icon: DollarSign,
-      color: "text-primary",
-      bg: "bg-primary/10 border-primary/20",
-      pulse: false,
-    },
-    {
-      label: "Artist Payouts (85%)",
-      value: `$${((grossRevenueCents * 0.85) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      icon: BarChart2,
-      color: "text-violet-400",
-      bg: "bg-violet-500/10 border-violet-500/20",
-      pulse: false,
-    },
-  ];
-
-  return (
-    <div
-      className="bg-card border border-border rounded-2xl overflow-hidden"
-      data-ocid="admin-traffic-panel"
-    >
-      <div className="px-4 sm:px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <Activity className="w-5 h-5 text-primary shrink-0" />
-          <h2 className="font-display font-bold text-foreground">
-            Real-Time Platform Traffic
-          </h2>
-          <span className="flex items-center gap-1.5 ml-2">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-xs text-red-400 font-semibold">LIVE</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground hidden sm:block">
-            {trafficLoading ? "Refreshing..." : `Updated: ${lastUpdated}`}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={trafficLoading}
-            className="gap-1.5 h-7 text-xs"
-            data-ocid="traffic-refresh-btn"
-          >
-            <RefreshCw
-              className={`w-3 h-3 ${trafficLoading ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </Button>
-        </div>
-      </div>
-
-      <div className="p-4 sm:p-6 space-y-6">
-        {/* Stat grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-          {statCards.map(({ label, value, icon: Icon, color, bg, pulse }) => (
-            <div
-              key={label}
-              className={`rounded-xl border p-3 sm:p-4 ${bg}`}
-              data-ocid={`traffic-stat-${label.toLowerCase().replace(/[\s()/%]/g, "-")}`}
-            >
-              <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                <div className={`relative ${pulse ? "shrink-0" : ""}`}>
-                  <Icon className={`w-4 h-4 ${color}`} />
-                  {pulse && (
-                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                  )}
-                </div>
-                <span className="text-xs text-muted-foreground font-medium truncate">
-                  {label}
-                </span>
-              </div>
-              <p
-                className={`text-xl sm:text-2xl font-bold font-display ${color} tabular-nums`}
-              >
-                {value}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {/* Page views by section */}
-        {trafficStats && trafficStats.pageViewsBySection.length > 0 && (
-          <div>
-            <h3 className="font-semibold text-foreground text-sm mb-3 flex items-center gap-2">
-              <Activity className="w-4 h-4 text-primary" />
-              Page Views by Section (Last 5 min)
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {trafficStats.pageViewsBySection.map(([section, count]) => (
-                <div
-                  key={section}
-                  className="flex items-center justify-between bg-muted/30 border border-border rounded-lg px-3 py-2"
-                  data-ocid={`traffic-section-${section.toLowerCase()}`}
-                >
-                  <span className="text-xs font-medium text-foreground capitalize truncate">
-                    {section}
-                  </span>
-                  <span className="text-xs font-bold text-primary tabular-nums ml-2 shrink-0">
-                    {Number(count).toLocaleString()}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Top tracks */}
-        {topTracks.length > 0 && (
-          <div>
-            <h3 className="font-semibold text-foreground text-sm mb-3 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" />
-              Top Selling Tracks
-            </h3>
-            <div className="space-y-2">
-              {topTracks.map((track, idx) => (
-                <div
-                  key={String(track.id)}
-                  className="flex items-center gap-3 bg-muted/30 border border-border rounded-lg px-3 sm:px-4 py-2.5"
-                  data-ocid={`traffic-top-track-${track.id}`}
-                >
-                  <span className="text-xs font-bold text-muted-foreground w-5 shrink-0 text-center">
-                    {idx + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {track.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {track.artistName} · {track.genre}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 sm:gap-3 shrink-0 text-xs text-muted-foreground">
-                    <span className="hidden sm:flex items-center gap-1">
-                      <ShoppingBag className="w-3 h-3 text-emerald-400" />
-                      {Number(track.saleCount).toLocaleString()}
-                    </span>
-                    <span className="text-primary font-semibold">
-                      ${(Number(track.priceInCents) / 100).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── Stripe Config Panel ──────────────────────────────────────────────────────
 
 interface StripeConfigPanelProps {
@@ -353,9 +71,7 @@ interface StripeConfigPanelProps {
 
 function StripeConfigPanel({ actor, adminToken }: StripeConfigPanelProps) {
   const [secretKey, setSecretKey] = useState("");
-  const [allowedCountries, setAllowedCountries] = useState(
-    "US,CA,GB,AU,DE,FR,JP,BR,MX",
-  );
+  const [allowedCountries, setAllowedCountries] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">(
     "idle",
@@ -387,6 +103,7 @@ function StripeConfigPanel({ actor, adminToken }: StripeConfigPanelProps) {
         .split(",")
         .map((c) => c.trim().toUpperCase())
         .filter(Boolean);
+      // Empty array means all countries are allowed (no restriction)
       await actor.setStripeConfiguration(adminToken, {
         secretKey: secretKey.trim(),
         allowedCountries: countries,
@@ -471,19 +188,25 @@ function StripeConfigPanel({ actor, adminToken }: StripeConfigPanelProps) {
               htmlFor="stripe-countries"
               className="text-sm font-medium text-foreground block mb-2"
             >
-              Allowed Countries (comma-separated ISO codes)
+              Allowed Countries{" "}
+              <span className="text-muted-foreground font-normal">
+                (optional — leave blank for all countries)
+              </span>
             </label>
             <Input
               id="stripe-countries"
               type="text"
               value={allowedCountries}
               onChange={(e) => setAllowedCountries(e.target.value)}
-              placeholder="US,CA,GB,AU,..."
+              placeholder="Leave blank to accept all countries worldwide"
               className="bg-secondary border-border font-mono text-sm"
               data-ocid="stripe-countries-input"
             />
             <p className="text-xs text-muted-foreground mt-1.5">
-              2-letter country codes for which payment methods are enabled.
+              Leave blank to support every country worldwide (recommended). Or
+              enter comma-separated ISO codes (e.g.{" "}
+              <code className="bg-muted/40 px-1 rounded">US,CA,GB</code>) to
+              restrict.
             </p>
           </div>
 
@@ -1212,9 +935,6 @@ export default function AdminPage() {
           </Button>
         </div>
       </div>
-
-      {/* Real-Time Traffic Panel */}
-      <TrafficPanel actor={actor} adminToken={adminToken} />
 
       {/* Stripe Configuration */}
       <StripeConfigPanel actor={actor} adminToken={adminToken} />

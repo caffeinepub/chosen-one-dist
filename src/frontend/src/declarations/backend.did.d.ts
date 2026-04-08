@@ -10,17 +10,6 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface AdminTrafficStats {
-  'activeVisitors' : bigint,
-  'totalPreviewsAllTime' : bigint,
-  'recentSignups' : bigint,
-  'grossRevenueCents' : bigint,
-  'pageViewsBySection' : Array<[string, bigint]>,
-  'pageViewsLast5Min' : bigint,
-  'totalSalesAllTime' : bigint,
-  'totalPublishedTracks' : bigint,
-  'recentPurchases' : bigint,
-}
 export interface ArtistAdminView {
   'id' : ArtistId,
   'bio' : string,
@@ -351,11 +340,6 @@ export interface _SERVICE {
     { 'ok' : null } |
       { 'err' : string }
   >,
-  'getAdminTrafficStats' : ActorMethod<
-    [string],
-    { 'ok' : AdminTrafficStats } |
-      { 'err' : string }
-  >,
   'getArtistDashboardStats' : ActorMethod<
     [string],
     { 'ok' : ArtistDashboardStats } |
@@ -456,7 +440,6 @@ export interface _SERVICE {
     { 'ok' : null } |
       { 'err' : string }
   >,
-  'recordPageView' : ActorMethod<[string, string], undefined>,
   'requestPayout' : ActorMethod<
     [string, bigint],
     { 'ok' : PayoutId } |
