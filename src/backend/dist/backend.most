@@ -1,0 +1,255 @@
+// Version: 1.0.0
+type ArtistCredential__634650168 =
+  {
+    artistId : ArtistId__1042382288;
+    var failedRecoveryAttempts : Nat;
+    var lastFailedRecoveryAt : ?Timestamp__384107131;
+    var lastLoginAt : ?Timestamp__384107131;
+    var pinHash : Text;
+    var securityAnswerHash : ?Text;
+    var securityQuestion : ?Text;
+    var sessionTokens : [SessionToken__423490683]
+  };
+type ArtistId__1042382288 = ArtistId__510564029;
+type ArtistId__1073680926 = ArtistId__510564029;
+type ArtistId__510564029 = Text;
+type ArtistId__568632190 = ArtistId__510564029;
+type ArtistProfile__948297833 =
+  {
+    var appleMusic : ?Text;
+    var bio : Text;
+    createdAt : Timestamp__384107131;
+    var facebook : ?Text;
+    id : ArtistId__1042382288;
+    var instagram : ?Text;
+    var name : Text;
+    var soundcloud : ?Text;
+    var spotify : ?Text;
+    var status : ArtistStatus__747340482;
+    var tiktok : ?Text;
+    var twitterX : ?Text;
+    var website : ?Text;
+    var youtube : ?Text
+  };
+type ArtistStatus__557665712 = {#active; #deleted; #suspended};
+type ArtistStatus__747340482 = ArtistStatus__557665712;
+type BankingInfo__1067567815 =
+  {
+    var accountHolderName : Text;
+    var accountNumber : Text;
+    artistId : ArtistId__1042382288;
+    var bankName : Text;
+    var routingNumber : Text;
+    var updatedAt : Timestamp__384107131
+  };
+type CommentId__576948694 = CommentId__821569710;
+type CommentId__821569710 = Nat;
+type CustomerCredential__813718500 =
+  {
+    createdAt : Timestamp__384107131;
+    var customerSessionTokens : [SessionToken__423490683];
+    email : Text;
+    var pinHash : Text
+  };
+type Data__159895909<T> = {var count : Nat__490723111; elements : [var ?T]};
+type Data__791452850<K, V> =
+  {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type ExternalBlob__246066408 = Blob;
+type Internal__667636161<T> =
+  {children : [var ?Node__92254746<T>]; data : Data__159895909<T>};
+type Internal__8484328<K, V> =
+  {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type Leaf__520550824<T> = {data : Data__159895909<T>};
+type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
+type MailingSubscriber__756069778 =
+  {email : Text; timestamp : Timestamp__284646776};
+type Map__158565046<K, V> = Map__297112838<K, V>;
+type Map__297112838<K, V> =
+  {var root : Node__46230540<K, V>; var size : Nat__490723111};
+type Map__605269027<K, V> = Map__158565046<K, V>;
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type Node__46230540<K, V> =
+  {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type Node__92254746<T> =
+  {#internal : Internal__667636161<T>; #leaf : Leaf__520550824<T>};
+type NotificationType__698706517 =
+  {#artistJoined; #newComment; #newDrop; #newSale; #trackUploaded};
+type Notification__516868361 =
+  {
+    artistId : ArtistId__1073680926;
+    id : Nat;
+    message : Text;
+    notifType : NotificationType__698706517;
+    recipientToken : ?Text;
+    timestamp : Timestamp__284646776
+  };
+type PageViewEvent__22893784 =
+  {section : Text; sessionId : Text; timestamp : Int};
+type PayoutId__751206570 = Nat;
+type PayoutId__818491590 = PayoutId__751206570;
+type PayoutStatus__532520630 = {#failed; #pending; #processed};
+type Payout__930096166 =
+  {
+    amountCents : Nat;
+    artistId : ArtistId__1042382288;
+    id : PayoutId__818491590;
+    var processedAt : ?Timestamp__384107131;
+    requestedAt : Timestamp__384107131;
+    var status : PayoutStatus__532520630
+  };
+type SaleId__517927116 = SaleId__807252808;
+type SaleId__807252808 = Nat;
+type Sale__827887323 =
+  {
+    artistEarningsCents : Nat;
+    artistId : ArtistId__1042382288;
+    buyerEmail : ?Text;
+    buyerToken : SessionToken__423490683;
+    createdAt : Timestamp__384107131;
+    grossAmountCents : Nat;
+    id : SaleId__517927116;
+    platformFeeCents : Nat;
+    stripeSessionId : Text;
+    trackId : TrackId__204860774
+  };
+type SessionToken__423490683 = SessionToken__701769829;
+type SessionToken__701769829 = Text;
+type Set__532252804<T> = Set__710576254<T>;
+type Set__710576254<T> =
+  {var root : Node__92254746<T>; var size : Nat__490723111};
+type StoreComment__293953079 =
+  {
+    authorId : ArtistId__1042382288;
+    var authorName : Text;
+    var body : Text;
+    createdAt : Timestamp__384107131;
+    id : CommentId__576948694;
+    rating : Nat
+  };
+type StripeConfiguration__96897619 =
+  {allowedCountries : [Text]; secretKey : Text};
+type Timestamp__284646776 = Timestamp__301639476;
+type Timestamp__301639476 = Int;
+type Timestamp__384107131 = Timestamp__301639476;
+type TrackId__180480 = TrackId__884067345;
+type TrackId__204860774 = TrackId__884067345;
+type TrackId__884067345 = Nat;
+type TrackMetadata__84047983 =
+  {
+    artistId : ArtistId__1042382288;
+    var artistName : Text;
+    audioFile : ExternalBlob__246066408;
+    coverArt : ExternalBlob__246066408;
+    createdAt : Timestamp__384107131;
+    var description : Text;
+    var explicit : Bool;
+    var genre : Text;
+    id : TrackId__204860774;
+    var preOrder : Bool;
+    var previewCount : Nat;
+    var previewEndSecs : Float;
+    var previewStartSecs : Float;
+    var priceInCents : Nat;
+    var releaseDate : Text;
+    var saleCount : Nat;
+    var songDetails : Text;
+    var state : TrackState__722016553;
+    var title : Text;
+    var trackType : TrackType__807558292
+  };
+type TrackState__722016553 = {#deleted; #preOrder; #published; #uploaded};
+type TrackType__807558292 = {#album; #single};
+type UserRole__1054455867 = {#admin; #guest; #user};
+actor {
+  stable LOCKOUT_WINDOW_NS : Int;
+  stable MAX_RECOVERY_ATTEMPTS : Nat;
+  stable _adminCredential : {var pinHash : Text; var sessionTokens : [Text]};
+  stable _nextCommentId : {var value : Nat};
+  stable _nextNotifId : {var value : Nat};
+  stable _nextPayoutId : {var value : Nat};
+  stable _nextSaleId : {var value : Nat};
+  stable _nextTrackId : {var value : Nat};
+  stable _openAiApiKey : Text;
+  stable _stripeConfig : {var value : ?StripeConfiguration__96897619};
+  stable _supportSystemPrompt : Text;
+  stable accessControlState :
+    {
+      var adminAssigned : Bool;
+      userRoles : Map__605269027<Principal, UserRole__1054455867>
+    };
+  stable artists :
+    {
+      var root : Node__46230540<Text, ArtistProfile__948297833>;
+      var size : Nat__490723111
+    };
+  stable banking :
+    {
+      var root : Node__46230540<Text, BankingInfo__1067567815>;
+      var size : Nat__490723111
+    };
+  stable credentials :
+    {
+      var root : Node__46230540<Text, ArtistCredential__634650168>;
+      var size : Nat__490723111
+    };
+  stable customerCredentials :
+    {
+      var root : Node__46230540<Text, CustomerCredential__813718500>;
+      var size : Nat__490723111
+    };
+  stable mailingSubscribers :
+    {
+      var blockIndex : Nat__490723111;
+      var blocks : [var [var ?MailingSubscriber__756069778]];
+      var elementIndex : Nat__490723111
+    };
+  stable notifications :
+    {
+      var blockIndex : Nat__490723111;
+      var blocks : [var [var ?Notification__516868361]];
+      var elementIndex : Nat__490723111
+    };
+  stable pageViewEvents :
+    {
+      var blockIndex : Nat__490723111;
+      var blocks : [var [var ?PageViewEvent__22893784]];
+      var elementIndex : Nat__490723111
+    };
+  stable payouts :
+    {
+      var blockIndex : Nat__490723111;
+      var blocks : [var [var ?Payout__930096166]];
+      var elementIndex : Nat__490723111
+    };
+  stable sales :
+    {
+      var blockIndex : Nat__490723111;
+      var blocks : [var [var ?Sale__827887323]];
+      var elementIndex : Nat__490723111
+    };
+  stable storeComments :
+    {
+      var blockIndex : Nat__490723111;
+      var blocks : [var [var ?StoreComment__293953079]];
+      var elementIndex : Nat__490723111
+    };
+  stable storeLikes :
+    {
+      var root : Node__46230540<ArtistId__568632190, Set__532252804<Text>>;
+      var size : Nat__490723111
+    };
+  stable thirtyDaysNs : Int;
+  stable trackLikes :
+    {
+      var root : Node__46230540<TrackId__180480, Set__532252804<Text>>;
+      var size : Nat__490723111
+    };
+  stable tracks :
+    {
+      var root : Node__46230540<Nat, TrackMetadata__84047983>;
+      var size : Nat__490723111
+    };
+  stable visitorSessions :
+    {var root : Node__46230540<Text, Int>; var size : Nat__490723111}
+};

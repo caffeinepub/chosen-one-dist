@@ -1,0 +1,565 @@
+type http_request_result = 
+ record {
+   body: blob;
+   headers: vec http_header;
+   status: nat;
+ };
+type http_header = 
+ record {
+   name: text;
+   value: text;
+ };
+type _ImmutableObjectStorageRefillResult = 
+ record {
+   success: opt bool;
+   topped_up_amount: opt nat;
+ };
+type _ImmutableObjectStorageRefillInformation = record {
+                                                  proposed_top_up_amount:
+                                                   opt nat;};
+type _ImmutableObjectStorageCreateCertificateResult = 
+ record {
+   blob_hash: text;
+   method: text;
+ };
+type UserRole = 
+ variant {
+   admin;
+   guest;
+   user;
+ };
+type TransformationOutput = 
+ record {
+   body: blob;
+   headers: vec http_header;
+   status: nat;
+ };
+type TransformationInput = 
+ record {
+   context: blob;
+   response: http_request_result;
+ };
+type TrackUploadInput = 
+ record {
+   artistName: text;
+   audioFile: ExternalBlob;
+   coverArt: ExternalBlob;
+   description: text;
+   explicit: bool;
+   genre: text;
+   preOrder: bool;
+   previewEndSecs: opt float64;
+   previewStartSecs: opt float64;
+   priceInCents: nat;
+   releaseDate: text;
+   songDetails: opt text;
+   title: text;
+   trackType: TrackType;
+ };
+type TrackType = 
+ variant {
+   album;
+   single;
+ };
+type TrackState = 
+ variant {
+   deleted;
+   preOrder;
+   published;
+   uploaded;
+ };
+type TrackRoyalty = 
+ record {
+   earningsCents: nat;
+   grossRevenueCents: nat;
+   previews: nat;
+   sales: nat;
+   title: text;
+   trackId: TrackId;
+ };
+type TrackMetadataPublic = 
+ record {
+   artistId: ArtistId;
+   artistName: text;
+   audioFile: ExternalBlob;
+   coverArt: ExternalBlob;
+   createdAt: Timestamp;
+   description: text;
+   explicit: bool;
+   genre: text;
+   id: TrackId;
+   likeCount: nat;
+   preOrder: bool;
+   previewCount: nat;
+   previewEndSecs: float64;
+   previewStartSecs: float64;
+   priceInCents: nat;
+   releaseDate: text;
+   saleCount: nat;
+   songDetails: text;
+   state: TrackState;
+   title: text;
+   trackType: TrackType;
+ };
+type TrackId = nat;
+type Timestamp = int;
+type StripeSessionStatus = 
+ variant {
+   completed: record {
+                response: text;
+                userPrincipal: opt text;
+              };
+   failed: record {error: text;};
+ };
+type StripeConfiguration = 
+ record {
+   allowedCountries: vec text;
+   secretKey: text;
+ };
+type StoreCommentPublic = 
+ record {
+   authorId: ArtistId;
+   authorName: text;
+   body: text;
+   createdAt: Timestamp;
+   id: CommentId;
+   rating: nat;
+ };
+type ShoppingItem = 
+ record {
+   currency: text;
+   priceInCents: nat;
+   productDescription: text;
+   productName: text;
+   quantity: nat;
+ };
+type SaleId = nat;
+type RoyaltyDashboard = 
+ record {
+   availableBalanceCents: nat;
+   payouts: vec PayoutPublic;
+   periodStats: PeriodStats;
+   trackBreakdown: vec TrackRoyalty;
+ };
+type RealTimeDashboardStats = 
+ record {
+   artistPayout: nat;
+   grossRevenue: nat;
+   totalListens: nat;
+   totalSales: nat;
+   trackPreviews: nat;
+ };
+type PeriodStats = 
+ record {
+   grossRevenueCents: nat;
+   payoutCents: nat;
+   periodLabel: text;
+   previews: nat;
+   sales: nat;
+ };
+type PayoutStatus = 
+ variant {
+   failed;
+   pending;
+   processed;
+ };
+type PayoutPublic = 
+ record {
+   amountCents: nat;
+   artistId: ArtistId;
+   id: PayoutId;
+   processedAt: opt Timestamp;
+   requestedAt: Timestamp;
+   status: PayoutStatus;
+ };
+type PayoutId = nat;
+type NotificationType = 
+ variant {
+   artistJoined;
+   newComment;
+   newDrop;
+   newSale;
+   trackUploaded;
+ };
+type Notification = 
+ record {
+   artistId: ArtistId;
+   id: nat;
+   message: text;
+   notifType: NotificationType;
+   recipientToken: opt text;
+   timestamp: Timestamp;
+ };
+type LikeResult = 
+ variant {
+   alreadyLiked;
+   notLiked;
+   ok;
+ };
+type ExternalBlob = blob;
+type DownloadReportEntry = 
+ record {
+   artistName: text;
+   downloadAvailable: bool;
+   expiresAt: Timestamp;
+   format: text;
+   purchasedAt: Timestamp;
+   saleId: SaleId;
+   trackId: TrackId;
+   trackTitle: text;
+ };
+type CommentId = nat;
+type BankingInfoPublic = 
+ record {
+   accountHolderName: text;
+   accountNumber: text;
+   artistId: ArtistId;
+   bankName: text;
+   routingNumber: text;
+   updatedAt: Timestamp;
+ };
+type ArtistTrackSummary = 
+ record {
+   genre: text;
+   id: TrackId;
+   previewCount: nat;
+   priceInCents: nat;
+   releaseDate: text;
+   saleCount: nat;
+   state: TrackState;
+   title: text;
+   trackType: TrackType;
+ };
+type ArtistStatus = 
+ variant {
+   active;
+   deleted;
+   suspended;
+ };
+type ArtistSocialLinks = 
+ record {
+   appleMusic: opt text;
+   facebook: opt text;
+   instagram: opt text;
+   soundcloud: opt text;
+   spotify: opt text;
+   tiktok: opt text;
+   twitterX: opt text;
+   website: opt text;
+   youtube: opt text;
+ };
+type ArtistProfilePublic = 
+ record {
+   appleMusic: opt text;
+   bio: text;
+   createdAt: Timestamp;
+   facebook: opt text;
+   id: ArtistId;
+   instagram: opt text;
+   name: text;
+   soundcloud: opt text;
+   spotify: opt text;
+   status: ArtistStatus;
+   tiktok: opt text;
+   twitterX: opt text;
+   website: opt text;
+   youtube: opt text;
+ };
+type ArtistId = text;
+type ArtistDashboardStats = 
+ record {
+   totalEarningsCents: nat;
+   totalPreviews: nat;
+   totalSales: nat;
+   totalTracks: nat;
+ };
+type ArtistAdminView = 
+ record {
+   bio: text;
+   createdAt: Timestamp;
+   id: ArtistId;
+   lastLoginAt: opt Timestamp;
+   name: text;
+   status: ArtistStatus;
+ };
+type AdminTrafficStats = 
+ record {
+   activeVisitors: nat;
+   grossRevenueCents: nat;
+   pageViewsBySection: vec record {
+                             text;
+                             nat;
+                           };
+   pageViewsLast5Min: nat;
+   recentPurchases: nat;
+   recentSignups: nat;
+   totalPreviewsAllTime: nat;
+   totalPublishedTracks: nat;
+   totalSalesAllTime: nat;
+ };
+service : {
+  _immutableObjectStorageBlobsAreLive: (hashes: vec blob) -> (vec bool) query;
+  _immutableObjectStorageBlobsToDelete: () -> (vec blob) query;
+  _immutableObjectStorageConfirmBlobDeletion: (blobs: vec blob) -> ();
+  _immutableObjectStorageCreateCertificate: (blobHash: text) ->
+   (_ImmutableObjectStorageCreateCertificateResult);
+  _immutableObjectStorageRefillCashier: (refillInformation:
+   opt _ImmutableObjectStorageRefillInformation) ->
+   (_ImmutableObjectStorageRefillResult);
+  _immutableObjectStorageUpdateGatewayPrincipals: () -> ();
+  _initializeAccessControl: () -> ();
+  addStoreComment: (token: text, authorName: text, body: text, rating:
+   nat) -> (variant {
+              err: text;
+              ok: CommentId;
+            });
+  adminChangePIN: (token: text, currentPinHash: text, newPinHash: text) ->
+   (variant {
+      err: text;
+      ok;
+    });
+  adminDeleteArtist: (token: text, artistId: text) ->
+   (variant {
+      err: text;
+      ok;
+    });
+  adminInitializePIN: (newPinHash: text) -> (variant {
+                                               err: text;
+                                               ok;
+                                             });
+  adminListArtists: (token: text) ->
+   (variant {
+      err: text;
+      ok: vec ArtistAdminView;
+    }) query;
+  adminLogin: (pinHash: text) -> (variant {
+                                    err: text;
+                                    ok: text;
+                                  });
+  adminLogout: (token: text) -> (variant {
+                                   err: text;
+                                   ok;
+                                 });
+  adminResetArtistPIN: (token: text, artistId: text, newPinHash: text) ->
+   (variant {
+      err: text;
+      ok;
+    });
+  adminSuspendArtist: (token: text, artistId: text) ->
+   (variant {
+      err: text;
+      ok;
+    });
+  adminUnsuspendArtist: (token: text, artistId: text) ->
+   (variant {
+      err: text;
+      ok;
+    });
+  askSupportChat: (question: text, language: text) ->
+   (variant {
+      err: text;
+      ok: text;
+    });
+  assignCallerUserRole: (user: principal, role: UserRole) -> ();
+  changePIN: (token: text, currentPinHash: text, newPinHash: text) ->
+   (variant {
+      err: text;
+      ok;
+    });
+  createCheckoutSession: (items: vec ShoppingItem, successUrl: text,
+   cancelUrl: text) -> (text);
+  createTrackCheckoutSession: (token: text, trackId: TrackId, successUrl:
+   text, cancelUrl: text) -> (variant {
+                                err: text;
+                                ok: text;
+                              });
+  deleteArtistAccount: (token: text) -> (variant {
+                                           err: text;
+                                           ok;
+                                         });
+  deleteTrack: (token: text, trackId: TrackId) -> (variant {
+                                                     err: text;
+                                                     ok;
+                                                   });
+  filterTracksByGenre: (genre: text) -> (vec TrackMetadataPublic) query;
+  fulfillTrackPurchase: (token: text, trackId: TrackId, stripeSessionId:
+   text, buyerEmail: opt text) -> (variant {
+                                     err: text;
+                                     ok;
+                                   });
+  getAdminTrafficStats: (token: text) ->
+   (variant {
+      err: text;
+      ok: AdminTrafficStats;
+    }) query;
+  getArtistDashboardStats: (token: text) ->
+   (variant {
+      err: text;
+      ok: ArtistDashboardStats;
+    }) query;
+  getArtistProfile: (artistId: ArtistId) ->
+   (variant {
+      err: text;
+      ok: ArtistProfilePublic;
+    }) query;
+  getArtistSecurityQuestion: (artistName: text) -> (opt text) query;
+  getArtistStoreLikes: (artistId: text) -> (nat) query;
+  getArtistTracks: (token: text) ->
+   (variant {
+      err: text;
+      ok: vec ArtistTrackSummary;
+    }) query;
+  getBankingInfo: (token: text) ->
+   (variant {
+      err: text;
+      ok: opt BankingInfoPublic;
+    }) query;
+  getCallerUserRole: () -> (UserRole) query;
+  getCustomerDownloadReport: (customerToken: text) ->
+   (variant {
+      err: text;
+      ok: vec DownloadReportEntry;
+    }) query;
+  getCustomerPurchases: (customerToken: text) ->
+   (variant {
+      err: text;
+      ok: vec TrackMetadataPublic;
+    }) query;
+  getDownloadReport: (token: text) ->
+   (variant {
+      err: text;
+      ok: vec DownloadReportEntry;
+    }) query;
+  getMailingListSubscribers: () -> (vec text) query;
+  getMyArtistProfile: (token: text) -> (opt ArtistProfilePublic) query;
+  getMyPayouts: (token: text) ->
+   (variant {
+      err: text;
+      ok: vec PayoutPublic;
+    }) query;
+  getPurchasedTracks: (token: text) ->
+   (variant {
+      err: text;
+      ok: vec TrackMetadataPublic;
+    }) query;
+  getRealTimeDashboardStats: (token: text) ->
+   (variant {
+      err: text;
+      ok: RealTimeDashboardStats;
+    }) query;
+  getRecentNotifications: (token: text) -> (vec Notification) query;
+  getRoyaltyDashboard: (token: text, periodLabel: text) ->
+   (variant {
+      err: text;
+      ok: RoyaltyDashboard;
+    }) query;
+  getStripeSessionStatus: (sessionId: text) -> (StripeSessionStatus);
+  getStripeSessionStatus_internal: (sessionId: text) -> (StripeSessionStatus);
+  getTrack: (trackId: TrackId) -> (opt TrackMetadataPublic) query;
+  getTrackLikes: (trackId: nat) -> (nat) query;
+  getTracksByArtist: (artistId: ArtistId) -> (vec TrackMetadataPublic) query;
+  hasLikedStore: (artistId: text, likerToken: text) -> (bool) query;
+  hasLikedTrack: (trackId: nat, likerToken: text) -> (bool) query;
+  incrementPreviewCount: (trackId: TrackId) -> ();
+  isAdminSession: (token: text) -> (bool) query;
+  isCallerAdmin: () -> (bool) query;
+  isStripeConfigured: () -> (bool) query;
+  likeArtistStore: (artistId: text, likerToken: text) -> (LikeResult);
+  likeTrack: (trackId: nat, likerToken: text) -> (LikeResult);
+  listPublishedTracks: () -> (vec TrackMetadataPublic) query;
+  listStoreComments: () -> (vec StoreCommentPublic) query;
+  loginArtist: (name: text, pinHash: text) -> (variant {
+                                                 err: text;
+                                                 ok: text;
+                                               });
+  loginCustomer: (email: text, pinHash: text) ->
+   (variant {
+      err: text;
+      ok: text;
+    });
+  logoutArtist: (token: text) -> (variant {
+                                    err: text;
+                                    ok;
+                                  });
+  logoutCustomer: (token: text) -> ();
+  notifyArtistJoined: (artistName: text) -> ();
+  notifyNewComment: (artistId: ArtistId, authorName: text) -> ();
+  notifyNewSale: (artistId: ArtistId, trackTitle: text) -> ();
+  notifyTrackUploaded: (token: text, trackTitle: text) -> ();
+  publishTrack: (token: text, trackId: TrackId) -> (variant {
+                                                      err: text;
+                                                      ok;
+                                                    });
+  recordPageView: (section: text, sessionId: text) -> ();
+  requestPayout: (token: text, amountCents: nat) ->
+   (variant {
+      err: text;
+      ok: PayoutId;
+    });
+  resetPINWithSecurityAnswer: (artistName: text, answerHash: text,
+   newPINHash: text) -> (variant {
+                           err: text;
+                           ok;
+                         });
+  saveBankingInfo: (token: text, accountHolderName: text, bankName: text,
+   routingNumber: text, accountNumber: text) -> (variant {
+                                                   err: text;
+                                                   ok;
+                                                 });
+  searchTracks: (searchTerm: text) -> (vec TrackMetadataPublic) query;
+  setArtistSecurityQuestion: (token: text, question: text, answerHash:
+   text) -> (variant {
+               err: text;
+               ok;
+             });
+  setStripeConfiguration: (config: StripeConfiguration) -> ();
+  signupArtist: (name: text, pinHash: text) ->
+   (variant {
+      err: text;
+      ok: ArtistProfilePublic;
+    });
+  signupCustomer: (email: text, pinHash: text) ->
+   (variant {
+      err: text;
+      ok: text;
+    });
+  subscribeToMailingList: (email: text) -> (variant {
+                                              err: text;
+                                              ok;
+                                            });
+  transform: (input: TransformationInput) -> (TransformationOutput) query;
+  unlikeArtistStore: (artistId: text, likerToken: text) -> (LikeResult);
+  unlikeTrack: (trackId: nat, likerToken: text) -> (LikeResult);
+  unpublishTrack: (token: text, trackId: TrackId) ->
+   (variant {
+      err: text;
+      ok;
+    });
+  updateArtistProfile: (token: text, name: text, bio: text) ->
+   (variant {
+      err: text;
+      ok;
+    });
+  updateArtistSocialLinks: (token: text, links: ArtistSocialLinks) ->
+   (variant {
+      err: text;
+      ok;
+    });
+  updateTrackMetadata: (token: text, trackId: TrackId, title: text, genre:
+   text, priceInCents: nat, description: text, releaseDate: text, explicit:
+   bool, preOrder: bool, previewStartSecs: opt float64, previewEndSecs:
+   opt float64, songDetails: opt text) -> (variant {
+                                             err: text;
+                                             ok;
+                                           });
+  uploadTrack: (token: text, input: TrackUploadInput) ->
+   (variant {
+      err: text;
+      ok: TrackId;
+    });
+  validateCustomerSession: (token: text) -> (bool) query;
+  validateSession: (token: text) -> (variant {
+                                       err: text;
+                                       ok: ArtistId;
+                                     }) query;
+}

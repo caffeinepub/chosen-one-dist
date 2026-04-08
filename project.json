@@ -1,0 +1,37 @@
+{
+  "overview": "Chosen One Distribution is a production-grade global music distribution platform where artists upload and sell music directly to customers. Artists sign in with a name and PIN, upload singles or albums, set their own prices, and earn 85% of every sale via live Stripe payments. Customers can browse the store, preview songs with a waveform player, purchase tracks with Apple Pay, Google Pay, PayPal, CashApp, Zelle, or card, and immediately download their purchases.",
+  "features": [
+    "Artist sign-up and login with name + PIN",
+    "Single and batch album upload (up to 10 songs)",
+    "Music store with search, genre filters, and waveform preview player",
+    "Live Stripe checkout with Apple Pay, Google Pay, PayPal, CashApp, Zelle, and card",
+    "Immediate post-purchase download in original MP3 or WAV format",
+    "30-day re-download window via My Purchases panel",
+    "Artist dashboard with real-time analytics (previews, sales, revenue, payouts)",
+    "Royalty dashboard with 85% payout, banking info, and payout requests",
+    "Artist profile pages with social media links (Instagram, Twitter/X, TikTok, YouTube, etc.)",
+    "Push notifications when a liked artist releases new music",
+    "Admin panel with real-time traffic analytics and artist management",
+    "On-site customer support chat assistant with escalation to complaints",
+    "Downloadable branded receipts after purchase",
+    "Top-selling and most-viewed song highlights with gold badges",
+    "11 legal and support pages with real professional content",
+    "Gold-on-black premium branding with crown motifs and rolling crown animations",
+    "Multilingual support in 8 languages with dark mode toggle",
+    "Transparent scorpion-with-crown background on homepage"
+  ],
+  "category": "music-entertainment",
+  "tags": [
+    "music",
+    "distribution",
+    "streaming",
+    "artist",
+    "royalties",
+    "stripe",
+    "payments",
+    "store",
+    "download",
+    "entertainment"
+  ],
+  "last_updated": "2026-04-08T10:27:44.393Z"
+}
