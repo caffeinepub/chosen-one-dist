@@ -512,7 +512,8 @@ service : {
                err: text;
                ok;
              });
-  setStripeConfiguration: (config: StripeConfiguration) -> ();
+  setStripeConfiguration: (adminToken: text, config: StripeConfiguration) ->
+   ();
   signupArtist: (name: text, pinHash: text) ->
    (variant {
       err: text;

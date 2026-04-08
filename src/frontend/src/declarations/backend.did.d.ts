@@ -478,7 +478,10 @@ export interface _SERVICE {
     { 'ok' : null } |
       { 'err' : string }
   >,
-  'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
+  'setStripeConfiguration' : ActorMethod<
+    [string, StripeConfiguration],
+    undefined
+  >,
   'signupArtist' : ActorMethod<
     [string, string],
     { 'ok' : ArtistProfilePublic } |

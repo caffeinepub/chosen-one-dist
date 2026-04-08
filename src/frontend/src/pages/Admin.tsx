@@ -387,7 +387,7 @@ function StripeConfigPanel({ actor, adminToken }: StripeConfigPanelProps) {
         .split(",")
         .map((c) => c.trim().toUpperCase())
         .filter(Boolean);
-      await actor.setStripeConfiguration({
+      await actor.setStripeConfiguration(adminToken, {
         secretKey: secretKey.trim(),
         allowedCountries: countries,
       });

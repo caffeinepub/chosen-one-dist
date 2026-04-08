@@ -647,7 +647,7 @@ export interface backendInterface {
         __kind__: "err";
         err: string;
     }>;
-    setStripeConfiguration(config: StripeConfiguration): Promise<void>;
+    setStripeConfiguration(adminToken: string, config: StripeConfiguration): Promise<void>;
     signupArtist(name: string, pinHash: string): Promise<{
         __kind__: "ok";
         ok: ArtistProfilePublic;
@@ -1971,17 +1971,17 @@ export class Backend implements backendInterface {
             return from_candid_variant_n9(this._uploadFile, this._downloadFile, result);
         }
     }
-    async setStripeConfiguration(arg0: StripeConfiguration): Promise<void> {
+    async setStripeConfiguration(arg0: string, arg1: StripeConfiguration): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.setStripeConfiguration(arg0);
+                const result = await this.actor.setStripeConfiguration(arg0, arg1);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.setStripeConfiguration(arg0);
+            const result = await this.actor.setStripeConfiguration(arg0, arg1);
             return result;
         }
     }

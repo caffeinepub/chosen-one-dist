@@ -547,7 +547,7 @@ export const idlService = IDL.Service({
       [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
       [],
     ),
-  'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
+  'setStripeConfiguration' : IDL.Func([IDL.Text, StripeConfiguration], [], []),
   'signupArtist' : IDL.Func(
       [IDL.Text, IDL.Text],
       [IDL.Variant({ 'ok' : ArtistProfilePublic, 'err' : IDL.Text })],
@@ -1176,7 +1176,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
         [],
       ),
-    'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
+    'setStripeConfiguration' : IDL.Func(
+        [IDL.Text, StripeConfiguration],
+        [],
+        [],
+      ),
     'signupArtist' : IDL.Func(
         [IDL.Text, IDL.Text],
         [IDL.Variant({ 'ok' : ArtistProfilePublic, 'err' : IDL.Text })],

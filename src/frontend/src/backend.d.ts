@@ -554,7 +554,7 @@ export interface backendInterface {
         __kind__: "err";
         err: string;
     }>;
-    setStripeConfiguration(config: StripeConfiguration): Promise<void>;
+    setStripeConfiguration(adminToken: string, config: StripeConfiguration): Promise<void>;
     signupArtist(name: string, pinHash: string): Promise<{
         __kind__: "ok";
         ok: ArtistProfilePublic;

@@ -88,9 +88,12 @@ actor {
     _stripeConfig.value != null;
   };
 
-  public shared ({ caller }) func setStripeConfiguration(config : Stripe.StripeConfiguration) : async () {
-    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
-      Runtime.trap("Unauthorized: Only admins can configure Stripe");
+  public shared func setStripeConfiguration(adminToken : Text, config : Stripe.StripeConfiguration) : async () {
+    let tokens = _adminCredential.sessionTokens;
+    let found = tokens.find(func(t : Text) : Bool { t == adminToken });
+    switch (found) {
+      case null { Runtime.trap("Unauthorized: Admin access required") };
+      case (?_) {};
     };
     _stripeConfig.value := ?config;
   };
