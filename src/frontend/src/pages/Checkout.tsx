@@ -109,7 +109,9 @@ interface SuccessTrack {
   title: string;
   artistName: string;
   audioFileUrl?: string;
+  format?: string; // explicit "mp3" | "wav" | "flac" — stored at snapshot time
   genre?: string;
+  price?: number;
 }
 
 // BigInt doesn't serialize via JSON.stringify — we store as strings
@@ -118,7 +120,9 @@ interface SuccessTrackSerialized {
   title: string;
   artistName: string;
   audioFileUrl?: string;
+  format?: string;
   genre?: string;
+  price?: number;
 }
 
 function serializeTracks(tracks: SuccessTrack[]): SuccessTrackSerialized[] {
@@ -142,6 +146,26 @@ function SuccessScreen({
   fulfillError: string | null;
   onReturnToStore: () => void;
 }) {
+  const hasAutoDownloaded = useRef(false);
+
+  // Auto-trigger all downloads after a short delay so the success screen renders first
+  useEffect(() => {
+    if (hasAutoDownloaded.current) return;
+    const downloadableTracks = tracks.filter((t) => t.audioFileUrl);
+    if (downloadableTracks.length === 0) return;
+    hasAutoDownloaded.current = true;
+    downloadableTracks.forEach((t, idx) => {
+      const ext = getFileExtension(t.audioFileUrl!);
+      const filename = `${t.artistName} - ${t.title}.${ext}`;
+      setTimeout(
+        () => {
+          triggerDownload(t.audioFileUrl!, filename);
+        },
+        500 + idx * 800,
+      ); // stagger by 800ms so browsers don't block multiple
+    });
+  }, [tracks]);
+
   const handleDownloadReceipt = () => {
     const canvas = document.createElement("canvas");
     const W = 600;
@@ -322,12 +346,17 @@ function SuccessScreen({
               {tracks.length} track{tracks.length !== 1 ? "s" : ""} purchased —
               download{tracks.length !== 1 ? "s" : ""} ready
             </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Downloads starting automatically — click any button below if
+              needed
+            </p>
           </div>
           <div className="p-4 space-y-3">
             {tracks.map((t) => {
-              const ext = t.audioFileUrl
-                ? getFileExtension(t.audioFileUrl)
-                : "mp3";
+              // Prefer the stored format (set at snapshot time), fall back to URL detection
+              const ext =
+                t.format ??
+                (t.audioFileUrl ? getFileExtension(t.audioFileUrl) : "mp3");
               const format = ext.toUpperCase();
               const filename = `${t.artistName} - ${t.title}.${ext}`;
               return (
@@ -343,14 +372,12 @@ function SuccessScreen({
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {t.artistName}
-                      {t.audioFileUrl && (
-                        <span
-                          className="ml-1 font-mono"
-                          style={{ color: "#d4af37" }}
-                        >
-                          · {format}
-                        </span>
-                      )}
+                      <span
+                        className="ml-1 font-mono font-semibold"
+                        style={{ color: "#d4af37" }}
+                      >
+                        · {format}
+                      </span>
                     </p>
                   </div>
                   {t.audioFileUrl ? (
@@ -360,7 +387,7 @@ function SuccessScreen({
                         triggerDownload(t.audioFileUrl!, filename);
                         toast.success(`Downloading "${t.title}" (${format})`);
                       }}
-                      className="gap-1 text-xs shrink-0 min-h-[36px]"
+                      className="gap-1 text-xs shrink-0 min-h-[40px] font-bold"
                       style={{ background: "#d4af37", color: "#000" }}
                       data-ocid={`success-download-${String(t.id)}`}
                     >
@@ -368,16 +395,21 @@ function SuccessScreen({
                       <span>{format}</span>
                     </Button>
                   ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled
-                      className="gap-1 text-xs shrink-0 min-h-[36px] opacity-50"
-                      data-ocid={`success-download-unavailable-${String(t.id)}`}
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>N/A</span>
-                    </Button>
+                    <div className="text-right shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled
+                        className="gap-1 text-xs min-h-[36px] opacity-50 mb-1"
+                        data-ocid={`success-download-unavailable-${String(t.id)}`}
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>N/A</span>
+                      </Button>
+                      <p className="text-xs text-muted-foreground max-w-[120px] leading-tight">
+                        Contact support with track: "{t.title}"
+                      </p>
+                    </div>
                   )}
                 </div>
               );
@@ -577,13 +609,19 @@ export default function CheckoutPage() {
       let url: string | null = null;
 
       // Snapshot cart NOW (before clearing) so it survives the redirect
-      const tracksSnapshot: SuccessTrack[] = cartItems.map((i) => ({
-        id: i.track.id,
-        title: i.track.title,
-        artistName: i.track.artistName,
-        audioFileUrl: i.track.audioFile?.getDirectURL?.(),
-        genre: i.track.genre,
-      }));
+      const tracksSnapshot: SuccessTrack[] = cartItems.map((i) => {
+        const audioFileUrl = i.track.audioFile?.getDirectURL?.() ?? undefined;
+        const format = audioFileUrl ? getFileExtension(audioFileUrl) : "mp3";
+        return {
+          id: i.track.id,
+          title: i.track.title,
+          artistName: i.track.artistName,
+          audioFileUrl,
+          format,
+          genre: i.track.genre,
+          price: Number(i.track.priceInCents) / 100,
+        };
+      });
 
       // Persist snapshot to localStorage before we navigate away
       saveCartSnapshot({

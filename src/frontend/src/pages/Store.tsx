@@ -1354,6 +1354,7 @@ function WaveformPreviewPanel({
 interface TrackCardProps {
   track: TrackMetadataPublic;
   onAddToCart: (track: TrackMetadataPublic) => void;
+  onBuyNow: (track: TrackMetadataPublic) => void;
   onPreview: (track: TrackMetadataPublic) => void;
   activePreviewId: bigint | null;
   isInCart: boolean;
@@ -1364,13 +1365,13 @@ interface TrackCardProps {
 function TrackCard({
   track,
   onAddToCart,
+  onBuyNow,
   onPreview,
   activePreviewId,
   isInCart,
   isBestSeller,
   isMostViewed,
 }: TrackCardProps) {
-  const { t } = useTranslation();
   const isPreviewOpen = activePreviewId === track.id;
   const coverUrl = track.coverArt?.getDirectURL?.();
   const colorClass = getGenreColor(track.genre);
@@ -1502,22 +1503,38 @@ function TrackCard({
           <ShareButton track={track} />
         </div>
 
+        {/* PRIMARY: Buy & Download — goes straight to checkout */}
         <Button
           size="sm"
-          variant={isInCart ? "secondary" : "default"}
-          className={`w-full mt-2 sm:mt-3 gap-1.5 sm:gap-2 text-xs min-h-[40px] sm:min-h-[36px] ${isInCart ? "border border-primary/30" : ""}`}
+          className="w-full mt-2 sm:mt-3 gap-1.5 sm:gap-2 text-xs font-bold min-h-[40px] sm:min-h-[40px] gold-glow"
+          style={{
+            background: "linear-gradient(135deg, #d4af37, #f5c842)",
+            color: "#000",
+          }}
+          onClick={() => onBuyNow(track)}
+          data-ocid={`store-buy-now-${track.id}`}
+        >
+          <Download className="w-3.5 h-3.5" />
+          Buy &amp; Download
+        </Button>
+
+        {/* SECONDARY: Add to cart (for multi-song purchases) */}
+        <Button
+          size="sm"
+          variant={isInCart ? "secondary" : "outline"}
+          className={`w-full mt-1.5 gap-1.5 text-xs min-h-[36px] border-primary/30 text-primary hover:bg-primary/10 ${isInCart ? "opacity-70" : ""}`}
           onClick={() => onAddToCart(track)}
           data-ocid={`store-add-cart-${track.id}`}
         >
           {isInCart ? (
             <>
               <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-              {t("addToCart")} ✓
+              In Cart ✓
             </>
           ) : (
             <>
               <ShoppingCart className="w-3.5 h-3.5" />
-              {t("addToCart")}
+              Add to Cart
             </>
           )}
         </Button>
@@ -1813,6 +1830,12 @@ export default function Store() {
     setShowCart(true);
   };
 
+  const handleBuyNow = async (track: TrackMetadataPublic) => {
+    // Add to cart (idempotent) then navigate directly to checkout
+    cartAddItem(track);
+    await navigate({ to: "/checkout" });
+  };
+
   const handleRemoveFromCart = (trackId: bigint) => {
     const item = cartItems.find((i) => i.track.id === trackId);
     cartRemoveItem(trackId);
@@ -2043,6 +2066,7 @@ export default function Store() {
                 key={String(track.id)}
                 track={track}
                 onAddToCart={handleAddToCart}
+                onBuyNow={handleBuyNow}
                 onPreview={handlePreview}
                 activePreviewId={activePreviewId}
                 isInCart={cartIds.has(String(track.id))}
